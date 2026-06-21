@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft } from 'lucide-react';
+import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PortfolioEntry } from '../types';
+import PdfThumbnail from './PdfThumbnail';
 
 interface AddInstanceModalProps {
   isOpen: boolean;
@@ -8,9 +9,29 @@ interface AddInstanceModalProps {
   formalMode: boolean;
   editEntry?: PortfolioEntry | null;
   entries: PortfolioEntry[];
+  isInline?: boolean;
+  history?: string[];
+  historyIndex?: number;
+  onHistoryBack?: () => void;
+  onHistoryForward?: () => void;
+  filteredEntries?: PortfolioEntry[];
+  onNavigateToEntry?: (entry: PortfolioEntry) => void;
 }
 
-export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onClose, formalMode, editEntry, entries }) => {
+export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
+  isOpen,
+  onClose,
+  formalMode,
+  editEntry,
+  entries,
+  isInline = false,
+  history,
+  historyIndex,
+  onHistoryBack,
+  onHistoryForward,
+  filteredEntries,
+  onNavigateToEntry
+}) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [category, setCategory] = useState<'proj' | 'cert' | 'item' | 'achv'>('proj');
 
@@ -33,6 +54,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
   const [existingFiles, setExistingFiles] = useState<string[]>([]);
   const [deletedFiles, setDeletedFiles] = useState<string[]>([]);
   const [thumbnailFilename, setThumbnailFilename] = useState<string>('');
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
 
   // File drag & drop states
   const [isDragOver, setIsDragOver] = useState(false);
@@ -54,6 +76,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     setExistingFiles([]);
     setDeletedFiles([]);
     setThumbnailFilename('');
+    setPreviewBlobUrl(null);
     setIsDragOver(false);
     setIsFolderNameCustom(false);
     setShowDeleteConfirm(false);
@@ -108,6 +131,40 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
       handleReset();
     }
   }, [isOpen, editEntry]);
+
+  useEffect(() => {
+    if (!thumbnailFilename) {
+      setPreviewBlobUrl(null);
+      return;
+    }
+
+    const newFile = selectedFiles.find(f => f.name === thumbnailFilename);
+    if (newFile) {
+      if (newFile.type.startsWith('image/') || newFile.type === 'application/pdf' || /\.pdf$/i.test(newFile.name)) {
+        const url = URL.createObjectURL(newFile);
+        setPreviewBlobUrl(url);
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      }
+      setPreviewBlobUrl(null);
+      return;
+    }
+
+    if (editEntry && existingFiles.includes(thumbnailFilename)) {
+      const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(thumbnailFilename);
+      const isPdf = /\.pdf$/i.test(thumbnailFilename);
+      if (isImage || isPdf) {
+        const parts = editEntry.folderPath.replace(/\\/g, '/').split('/');
+        const origFolder = parts[parts.length - 1] || '';
+        const cat = editEntry.source;
+        setPreviewBlobUrl(`/api/media/${cat}/${origFolder}/${thumbnailFilename}`);
+        return;
+      }
+    }
+
+    setPreviewBlobUrl(null);
+  }, [thumbnailFilename, selectedFiles, existingFiles, editEntry]);
 
   const handleSelectCategory = (cat: 'proj' | 'cert' | 'item' | 'achv') => {
     setCategory(cat);
@@ -211,6 +268,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
       // Auto-set the first image or PDF as thumbnail if none chosen
       if (!thumbnailFilename && ['png', 'jpg', 'jpeg', 'pdf'].includes(extension || '')) {
         setThumbnailFilename(file.name);
+      }
+      // Auto-populate title from attachment name if title is empty
+      if (!title.trim()) {
+        const lastDot = file.name.lastIndexOf('.');
+        const baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name;
+        const cleanTitle = baseName.replace(/[-_]/g, ' ');
+        handleTitleChange(cleanTitle);
       }
     } else {
       alert('Only .png, .jpg, .jpeg, .pdf, or .md files are supported!');
@@ -328,9 +392,10 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-      <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full flex flex-col shadow-2xl overflow-hidden">
+  const content = (
+    <div className={`bg-[#12161b] border border-slate-800 rounded-xl w-full flex flex-col shadow-2xl overflow-hidden ${
+      isInline ? 'max-h-[calc(100vh-100px)]' : ''
+    }`}>
         
         {/* Step 1: Category Selector */}
         {step === 1 && (
@@ -480,6 +545,74 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
               </button>
             </div>
 
+            {/* Nav Bar with Explorer Back/Forward and Page Prev/Next (in edit mode) */}
+            {isEditMode && history && filteredEntries && onNavigateToEntry && editEntry && (() => {
+              const currentIdx = filteredEntries.findIndex(e => e.id === editEntry.id);
+              const hasPrev = currentIdx > 0;
+              const hasNext = currentIdx < filteredEntries.length - 1;
+
+              return (
+                <div className="px-4 py-2 border-b border-slate-800/60 bg-[#13171c] flex items-center justify-between gap-2 shrink-0 select-none">
+                  {/* Left: File Explorer Back/Forward History */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={historyIndex === undefined || historyIndex <= 0}
+                      onClick={onHistoryBack}
+                      className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
+                        historyIndex !== undefined && historyIndex > 0
+                          ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                          : 'text-slate-700 cursor-not-allowed'
+                      }`}
+                      title="Go Back (History)"
+                    >
+                      <ArrowLeft size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={historyIndex === undefined || history === undefined || historyIndex >= history.length - 1}
+                      onClick={onHistoryForward}
+                      className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
+                        historyIndex !== undefined && history !== undefined && historyIndex < history.length - 1
+                          ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                          : 'text-slate-700 cursor-not-allowed'
+                      }`}
+                      title="Go Forward (History)"
+                    >
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+
+                  {/* Right: Sequential Timeline Page Prev/Next */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!hasPrev}
+                      onClick={() => { if (hasPrev) onNavigateToEntry(filteredEntries[currentIdx - 1]); }}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasPrev ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                      title="Previous Item in Timeline"
+                    >
+                      <ChevronLeft size={14} />
+                      Prev
+                    </button>
+                    <span className="text-[10px] text-slate-500 font-semibold tabular-nums select-none bg-slate-950 px-2 py-0.5 rounded border border-slate-900">
+                      {currentIdx >= 0 ? `${currentIdx + 1} / ${filteredEntries.length}` : '- / -'}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!hasNext}
+                      onClick={() => { if (hasNext) onNavigateToEntry(filteredEntries[currentIdx + 1]); }}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasNext ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                      title="Next Item in Timeline"
+                    >
+                      Next
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Editor Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 max-h-[65vh]">
               
@@ -607,6 +740,31 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                     })}
 
                   </div>
+                </div>
+              )}
+
+              {/* Thumbnail Preview */}
+              {previewBlobUrl && (
+                <div className="flex flex-col gap-1 p-3 bg-slate-950/40 border border-slate-800 rounded-lg animate-fadeIn select-none">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Thumbnail Preview ({thumbnailFilename})</span>
+                  <a
+                    href={previewBlobUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full h-[300px] rounded-lg overflow-hidden border border-slate-800/80 bg-slate-900/50 flex items-center justify-center cursor-pointer hover:border-slate-700 transition-colors block"
+                  >
+                    {/\.pdf$/i.test(thumbnailFilename) ? (
+                      <div className="w-full h-full pointer-events-none">
+                        <PdfThumbnail src={previewBlobUrl} title={thumbnailFilename} />
+                      </div>
+                    ) : (
+                      <img
+                        src={previewBlobUrl}
+                        alt="Thumbnail Preview"
+                        className="w-full h-full object-contain"
+                      />
+                    )}
+                  </a>
                 </div>
               )}
 
@@ -824,8 +982,20 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
             </div>
           </>
         )}
+    </div>
+  );
 
-      </div>
+  return (
+    <>
+      {isInline ? (
+        content
+      ) : (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <div className="max-w-2xl w-full">
+            {content}
+          </div>
+        </div>
+      )}
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
@@ -856,7 +1026,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

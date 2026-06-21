@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Eye, Linkedin } from 'lucide-react';
+import { X, Github, Folder, Info, Eye, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -94,6 +94,15 @@ export const App: React.FC = () => {
   const [nodeLineMode, setNodeLineMode] = useState<'focus' | 'all'>(() => {
     return (localStorage.getItem('nodeLineMode') as 'focus' | 'all') || 'all';
   });
+  const [readViewMode, setReadViewMode] = useState<'popup' | 'split'>(() => {
+    return (localStorage.getItem('readViewMode') as 'popup' | 'split') || 'popup';
+  });
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [clickToEdit, setClickToEdit] = useState<boolean>(() => {
+    return localStorage.getItem('clickToEdit') === 'true';
+  });
+  const [isEditingInline, setIsEditingInline] = useState<boolean>(false);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -142,12 +151,13 @@ export const App: React.FC = () => {
     localStorage.setItem('isAddPopupOpen', String(isAddPopupOpen));
     localStorage.setItem('checkedCards', JSON.stringify(checkedCards));
     localStorage.setItem('statsMode', statsMode);
+    localStorage.setItem('clickToEdit', String(clickToEdit));
     if (activeStatFilter === null) {
       localStorage.removeItem('activeStatFilter');
     } else {
       localStorage.setItem('activeStatFilter', activeStatFilter);
     }
-  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode]);
+  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode, clickToEdit]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -426,14 +436,88 @@ export const App: React.FC = () => {
     return `Combo ${names.join(' + ')}`;
   };
 
-  const handleMoreClick = (entry: PortfolioEntry) => {
-    if (soundEnabled) sfx.playTick();
+  const navigateToEntry = (entry: PortfolioEntry | null, actionType: 'click' | 'prev-next' | 'history' = 'click') => {
+    if (soundEnabled) {
+      sfx.playTick();
+    }
+
+    const wasEditing = !!editEntry;
+
+    if (entry === null) {
+      setIsEditingInline(false);
+      setEditEntry(null);
+      setSelectedEntry(null);
+      return;
+    }
+
     setSelectedEntry(entry);
+    if (wasEditing) {
+      setEditEntry(entry);
+      if (readViewMode === 'split') {
+        setIsEditingInline(true);
+      }
+    } else {
+      setIsEditingInline(false);
+    }
+
+    if (actionType === 'history') {
+      return;
+    }
+
+    // Add to history stack
+    const nextHistory = history.slice(0, historyIndex + 1);
+    // Avoid duplicate adjacent entries
+    if (nextHistory[nextHistory.length - 1] !== entry.id) {
+      nextHistory.push(entry.id);
+      setHistory(nextHistory);
+      setHistoryIndex(nextHistory.length - 1);
+    }
+  };
+
+  const handleHistoryBack = () => {
+    if (historyIndex > 0) {
+      const prevIdx = historyIndex - 1;
+      const prevId = history[prevIdx];
+      const prevEntry = entries.find(e => e.id === prevId);
+      if (prevEntry) {
+        setHistoryIndex(prevIdx);
+        navigateToEntry(prevEntry, 'history');
+      }
+    }
+  };
+
+  const handleHistoryForward = () => {
+    if (historyIndex < history.length - 1) {
+      const nextIdx = historyIndex + 1;
+      const nextId = history[nextIdx];
+      const nextEntry = entries.find(e => e.id === nextId);
+      if (nextEntry) {
+        setHistoryIndex(nextIdx);
+        navigateToEntry(nextEntry, 'history');
+      }
+    }
+  };
+
+  const handleMoreClick = (entry: PortfolioEntry) => {
+    if (clickToEdit) {
+      if (soundEnabled) sfx.playTick();
+      setEditEntry(entry);
+      if (readViewMode === 'split') {
+        setSelectedEntry(entry);
+        setIsEditingInline(true);
+      } else {
+        setIsAddPopupOpen(true);
+      }
+    } else {
+      setIsEditingInline(false);
+      navigateToEntry(entry, 'click');
+    }
   };
 
   const handleCloseModal = () => {
-    if (soundEnabled) sfx.playTick();
-    setSelectedEntry(null);
+    setIsEditingInline(false);
+    setEditEntry(null);
+    navigateToEntry(null);
   };
 
   return (
@@ -509,6 +593,10 @@ export const App: React.FC = () => {
                setStatsMode={setStatsMode}
                nodeLineMode={nodeLineMode}
                setNodeLineMode={(m) => { setNodeLineMode(m); localStorage.setItem('nodeLineMode', m); }}
+               readViewMode={readViewMode}
+               setReadViewMode={(m) => { setReadViewMode(m); localStorage.setItem('readViewMode', m); }}
+               clickToEdit={clickToEdit}
+               setClickToEdit={setClickToEdit}
              />
           </aside>
         )}
@@ -544,20 +632,224 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          <Timeline
-            entries={filteredEntries}
-            onOpenFolder={handleOpenFolder}
-            onMore={handleMoreClick}
-            thinnerCard={thinnerCard}
-            checkedCards={checkedCards}
-            onToggleChecked={toggleCardChecked}
-            nodeLineMode={nodeLineMode}
-          />
+          {/* Split view: timeline + detail panel side by side */}
+          <div className={`flex gap-4 ${readViewMode === 'split' && selectedEntry ? 'items-start' : ''}`}>
+            {/* Timeline (shrinks when split panel is open) */}
+            <div className={`transition-all duration-300 min-w-0 ${readViewMode === 'split' && selectedEntry ? 'w-1/2 flex-1' : 'flex-1'}`}>
+              <Timeline
+                entries={filteredEntries}
+                onOpenFolder={handleOpenFolder}
+                onMore={handleMoreClick}
+                thinnerCard={readViewMode === 'split' && !!selectedEntry ? true : thinnerCard}
+                checkedCards={checkedCards}
+                onToggleChecked={toggleCardChecked}
+                nodeLineMode={nodeLineMode}
+              />
+            </div>
+
+            {/* Split view detail panel */}
+            {readViewMode === 'split' && selectedEntry && (
+              isEditingInline ? (
+                <div className="w-1/2 flex-1 min-w-0 lg:sticky lg:top-6 self-start animate-fadeIn">
+                  <AddInstanceModal
+                    isOpen={true}
+                    onClose={() => {
+                      setIsEditingInline(false);
+                      setEditEntry(null);
+                    }}
+                    formalMode={formalMode}
+                    editEntry={editEntry}
+                    entries={entries}
+                    isInline={true}
+                    history={history}
+                    historyIndex={historyIndex}
+                    onHistoryBack={handleHistoryBack}
+                    onHistoryForward={handleHistoryForward}
+                    filteredEntries={filteredEntries}
+                    onNavigateToEntry={(entry) => navigateToEntry(entry, 'prev-next')}
+                  />
+                </div>
+              ) : (() => {
+                const currentIdx = filteredEntries.findIndex(e => e.id === selectedEntry.id);
+                const hasPrev = currentIdx > 0;
+                const hasNext = currentIdx < filteredEntries.length - 1;
+                const depIds = selectedEntry.dependencies || [];
+                const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
+                return (
+                  <div className="w-1/2 flex-1 min-w-0 lg:sticky lg:top-6 self-start">
+                    <div className="bg-[#12161b] border border-slate-800 rounded-xl flex flex-col shadow-2xl overflow-hidden max-h-[calc(100vh-100px)]">
+                      {/* Split Panel Header */}
+                      <div className="p-4 border-b border-slate-800 bg-[#15191e] flex items-start justify-between gap-3 shrink-0">
+                        <div className="min-w-0">
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider mr-2">
+                            {selectedEntry.source}
+                          </span>
+                          <span className="text-xs text-slate-400 font-semibold">
+                            {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
+                          </span>
+                          <h2 className="text-base font-black text-slate-100 mt-1 truncate">{selectedEntry.title}</h2>
+                        </div>
+                        <button
+                          onClick={handleCloseModal}
+                          className="p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition-colors shrink-0"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {/* Nav Bar with Explorer Back/Forward and Page Prev/Next */}
+                      <div className="px-4 py-2 border-b border-slate-800/60 bg-[#13171c] flex items-center justify-between gap-2 shrink-0">
+                        {/* Left: File Explorer Back/Forward History */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            disabled={historyIndex <= 0}
+                            onClick={handleHistoryBack}
+                            className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
+                              historyIndex > 0
+                                ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                                : 'text-slate-700 cursor-not-allowed'
+                            }`}
+                            title="Go Back (History)"
+                          >
+                            <ArrowLeft size={14} />
+                          </button>
+                          <button
+                            disabled={historyIndex >= history.length - 1}
+                            onClick={handleHistoryForward}
+                            className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
+                              historyIndex < history.length - 1
+                                ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                                : 'text-slate-700 cursor-not-allowed'
+                            }`}
+                            title="Go Forward (History)"
+                          >
+                            <ArrowRight size={14} />
+                          </button>
+                        </div>
+
+                        {/* Right: Sequential Timeline Page Prev/Next */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            disabled={!hasPrev}
+                            onClick={() => { if (hasPrev) navigateToEntry(filteredEntries[currentIdx - 1], 'prev-next'); }}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasPrev ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                            title="Previous Item in Timeline"
+                          >
+                            <ChevronLeft size={14} />
+                            Prev
+                          </button>
+                          <span className="text-[10px] text-slate-500 font-semibold tabular-nums select-none bg-slate-950 px-2 py-0.5 rounded border border-slate-900">
+                            {currentIdx >= 0 ? `${currentIdx + 1} / ${filteredEntries.length}` : '- / -'}
+                          </span>
+                          <button
+                            disabled={!hasNext}
+                            onClick={() => { if (hasNext) navigateToEntry(filteredEntries[currentIdx + 1], 'prev-next'); }}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasNext ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                            title="Next Item in Timeline"
+                          >
+                            Next
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Body */}
+                      <div className="flex-1 overflow-y-auto p-5 prose prose-invert max-w-none text-slate-300 text-sm">
+                        {validDeps.length > 0 && (
+                          <div className="mb-5 p-3 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
+                              <span>Connection Network</span>
+                              <span className="text-[9px] text-slate-600 font-medium normal-case">Hover • Click to navigate</span>
+                            </div>
+                            <div className="relative w-full" style={{ height: `${Math.max(80, validDeps.length * 32 + 32)}px` }}>
+                              <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(80, validDeps.length * 32 + 32)}`} preserveAspectRatio="xMidYMid meet">
+                                {validDeps.map((dep, idx) => {
+                                  const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
+                                  const yS = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
+                                  const yE = svgH / 2; const dx2 = (370 - 50) / 2;
+                                  const isH = hoveredDepId === dep.id;
+                                  const c = getDependencyColor(dep);
+                                  return <path key={dep.id} d={`M 50 ${yS} C ${50 + dx2} ${yS}, ${370 - dx2} ${yE}, 370 ${yE}`} fill="none" stroke={isH ? c : 'rgba(148,163,184,0.18)'} strokeWidth={isH ? 2.5 : 1.2} className="transition-all duration-200" />;
+                                })}
+                                {validDeps.map((dep, idx) => {
+                                  const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
+                                  const y = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
+                                  const isH = hoveredDepId === dep.id;
+                                  const c = getDependencyColor(dep);
+                                  const lbl = dep.title.length > 20 ? dep.title.slice(0, 19) + '…' : dep.title;
+                                  return (
+                                    <g key={dep.id} className="cursor-pointer" onMouseEnter={() => setHoveredDepId(dep.id)} onMouseLeave={() => setHoveredDepId(null)} onClick={() => navigateToEntry(dep, 'click')}>
+                                      <circle cx={50} cy={y} r={isH ? 12 : 0} fill={c} opacity={0.25} className="transition-all duration-200" />
+                                      <circle cx={50} cy={y} r={7} fill={c} stroke={isH ? '#fff' : 'rgba(0,0,0,0.5)'} strokeWidth={1.5} className="transition-all duration-200" />
+                                      <text x={64} y={y + 4} fontSize={9} fill={isH ? '#e2e8f0' : '#64748b'} fontFamily="ui-monospace,monospace" fontWeight={isH ? 700 : 500} className="pointer-events-none select-none">{lbl}</text>
+                                    </g>
+                                  );
+                                })}
+                                {(() => {
+                                  const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
+                                  const y = svgH / 2; const c = getDependencyColor(selectedEntry);
+                                  const lbl = selectedEntry.title.length > 12 ? selectedEntry.title.slice(0, 11) + '…' : selectedEntry.title;
+                                  return (
+                                    <g>
+                                      <circle cx={370} cy={y} r={16} fill={c} opacity={0.15} />
+                                      <circle cx={370} cy={y} r={10} fill={c} stroke="rgba(0,0,0,0.6)" strokeWidth={2} />
+                                      <circle cx={370} cy={y} r={3} fill="#fff" />
+                                      <text x={386} y={y + 4} fontSize={9} fill="#cbd5e1" fontFamily="ui-monospace,monospace" fontWeight={700} className="pointer-events-none select-none">{lbl}</text>
+                                    </g>
+                                  );
+                                })()}
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedEntry.imgPath && (
+                          selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
+                            <div className="w-full h-[300px] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-4">
+                              <iframe src={`${selectedEntry.imgPath}#toolbar=0`} className="w-full h-full border-none" title={selectedEntry.title} />
+                            </div>
+                          ) : (
+                            <div className="w-full h-36 rounded-lg overflow-hidden border border-slate-800 mb-4 bg-slate-900/50">
+                              <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
+                            </div>
+                          )
+                        )}
+
+                        {selectedEntry.body ? (
+                          <ReactMarkdown className="markdown-content space-y-3 text-sm">{selectedEntry.body}</ReactMarkdown>
+                        ) : (
+                          <p className="text-xs italic text-slate-400 flex items-center gap-1"><Info size={14} /><span>No archive description provided.</span></p>
+                        )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="p-3 border-t border-slate-800 flex flex-wrap justify-end gap-2 bg-[#15191e] shrink-0">
+                        <button onClick={() => handleOpenFolder(selectedEntry.folderPath)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-bold transition-colors">
+                          <Folder size={12} /><span>Folder</span>
+                        </button>
+                        {selectedEntry.github && (
+                          <a href={selectedEntry.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-bold transition-colors border border-transparent">
+                            <Github size={12} /><span>GitHub</span>
+                          </a>
+                        )}
+                        <button onClick={() => { setEditEntry(selectedEntry); setIsEditingInline(true); }} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[11px] font-bold transition-colors">Edit</button>
+                        <button onClick={handleCloseModal} className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-[11px] font-bold transition-colors text-slate-400">Close</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
         </section>
       </main>
 
-      {/* Details Markdown Modal */}
-      {selectedEntry && (
+      {/* Details Markdown Modal (Popup mode only) */}
+      {selectedEntry && readViewMode === 'popup' && (() => {
+        const currentIdx = filteredEntries.findIndex(e => e.id === selectedEntry.id);
+        const hasPrev = currentIdx > 0;
+        const hasNext = currentIdx < filteredEntries.length - 1;
+        return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
@@ -579,6 +871,62 @@ export const App: React.FC = () => {
               >
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Nav Bar with Explorer Back/Forward and Page Prev/Next */}
+            <div className="px-4 py-2 border-b border-slate-800/60 bg-[#13171c] flex items-center justify-between gap-2 shrink-0">
+              {/* Left: File Explorer Back/Forward History */}
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={historyIndex <= 0}
+                  onClick={handleHistoryBack}
+                  className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
+                    historyIndex > 0
+                      ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                      : 'text-slate-700 cursor-not-allowed'
+                  }`}
+                  title="Go Back (History)"
+                >
+                  <ArrowLeft size={14} />
+                </button>
+                <button
+                  disabled={historyIndex >= history.length - 1}
+                  onClick={handleHistoryForward}
+                  className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
+                    historyIndex < history.length - 1
+                      ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                      : 'text-slate-700 cursor-not-allowed'
+                  }`}
+                  title="Go Forward (History)"
+                >
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+
+              {/* Right: Sequential Timeline Page Prev/Next */}
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={!hasPrev}
+                  onClick={() => { if (hasPrev) navigateToEntry(filteredEntries[currentIdx - 1], 'prev-next'); }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasPrev ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                  title="Previous Item in Timeline"
+                >
+                  <ChevronLeft size={14} />
+                  Prev
+                </button>
+                <span className="text-[10px] text-slate-500 font-semibold tabular-nums select-none bg-slate-950 px-2 py-0.5 rounded border border-slate-900">
+                  {currentIdx >= 0 ? `${currentIdx + 1} / ${filteredEntries.length}` : '- / -'}
+                </span>
+                <button
+                  disabled={!hasNext}
+                  onClick={() => { if (hasNext) navigateToEntry(filteredEntries[currentIdx + 1], 'prev-next'); }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasNext ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                  title="Next Item in Timeline"
+                >
+                  Next
+                  <ChevronRight size={14} />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body / Markdown Content */}
@@ -641,11 +989,7 @@ export const App: React.FC = () => {
                               className="cursor-pointer group"
                               onMouseEnter={() => setHoveredDepId(dep.id)}
                               onMouseLeave={() => setHoveredDepId(null)}
-                              onClick={() => {
-                                if (soundEnabled) sfx.playTick();
-                                setSelectedEntry(dep);
-                              }}
-                            >
+                              onClick={() => navigateToEntry(dep, 'click')}>
                               {/* Outer Glow on Hover */}
                               <circle
                                 cx={x}
@@ -820,7 +1164,7 @@ export const App: React.FC = () => {
                 onClick={() => {
                   setEditEntry(selectedEntry);
                   setIsAddPopupOpen(true);
-                  setSelectedEntry(null);
+                  navigateToEntry(null);
                 }}
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
               >
@@ -835,7 +1179,8 @@ export const App: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Add New Instance Modal */}
       <AddInstanceModal
@@ -847,6 +1192,12 @@ export const App: React.FC = () => {
         formalMode={formalMode}
         editEntry={editEntry}
         entries={entries}
+        history={history}
+        historyIndex={historyIndex}
+        onHistoryBack={handleHistoryBack}
+        onHistoryForward={handleHistoryForward}
+        filteredEntries={filteredEntries}
+        onNavigateToEntry={(entry) => navigateToEntry(entry, 'prev-next')}
       />
 
       {/* Dreaming Modal Popup */}

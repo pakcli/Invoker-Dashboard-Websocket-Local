@@ -26,6 +26,10 @@ interface HUDProps {
   setStatsMode: (mode: 'done' | 'upcoming' | 'combined') => void;
   nodeLineMode: 'focus' | 'all';
   setNodeLineMode: (mode: 'focus' | 'all') => void;
+  readViewMode: 'popup' | 'split';
+  setReadViewMode: (mode: 'popup' | 'split') => void;
+  clickToEdit: boolean;
+  setClickToEdit: (val: boolean) => void;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -52,6 +56,10 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setStatsMode,
   nodeLineMode,
   setNodeLineMode,
+  readViewMode,
+  setReadViewMode,
+  clickToEdit,
+  setClickToEdit,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
 
@@ -536,6 +544,66 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             }`}
           >
             Show All
+          </button>
+        </div>
+      </div>
+
+      {/* Read View Toggle */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Read View</span>
+          <span className="text-slate-400 font-bold capitalize">{readViewMode === 'split' ? 'Split' : 'Popup'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setReadViewMode('popup')}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              readViewMode === 'popup'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Popup
+          </button>
+          <button
+            onClick={() => setReadViewMode('split')}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              readViewMode === 'split'
+                ? 'bg-[#15191e] text-purple-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Split
+          </button>
+        </div>
+      </div>
+
+      {/* Click to Edit Toggle */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Click on Card</span>
+          <span className="text-slate-400 font-bold capitalize">{clickToEdit ? 'Direct Edit' : 'Read View'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setClickToEdit(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !clickToEdit
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Read View
+          </button>
+          <button
+            onClick={() => setClickToEdit(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              clickToEdit
+                ? 'bg-[#15191e] text-amber-500 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Direct Edit
           </button>
         </div>
       </div>
