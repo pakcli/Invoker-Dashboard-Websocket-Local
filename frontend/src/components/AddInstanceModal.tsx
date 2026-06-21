@@ -7,9 +7,10 @@ interface AddInstanceModalProps {
   onClose: () => void;
   formalMode: boolean;
   editEntry?: PortfolioEntry | null;
+  entries: PortfolioEntry[];
 }
 
-export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onClose, formalMode, editEntry }) => {
+export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onClose, formalMode, editEntry, entries }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [category, setCategory] = useState<'proj' | 'cert' | 'item' | 'achv'>('proj');
 
@@ -25,6 +26,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
   const [isFolderNameCustom, setIsFolderNameCustom] = useState(false);
   const [done, setDone] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dependencies, setDependencies] = useState<string[]>([]);
+  const [depQuery, setDepQuery] = useState('');
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [existingFiles, setExistingFiles] = useState<string[]>([]);
@@ -54,6 +57,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     setIsDragOver(false);
     setIsFolderNameCustom(false);
     setShowDeleteConfirm(false);
+    setDependencies([]);
+    setDepQuery('');
   };
 
   const handleClose = () => {
@@ -81,6 +86,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
       setLinkedin(editEntry.linkedin || '');
       setBodyText(editEntry.body || '');
       setDone(!!editEntry.done);
+      setDependencies(editEntry.dependencies || []);
+      setDepQuery('');
       
       setIsFolderNameCustom(true);
       
@@ -136,6 +143,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     if (metadata.github) setGithub(metadata.github);
     if (metadata.linkedin) setLinkedin(metadata.linkedin);
     if (metadata.done) setDone(metadata.done.toLowerCase() === 'true');
+    if (metadata.dependencies) {
+      const depStr = metadata.dependencies.replace(/[\[\]'"]/g, '');
+      const list = depStr.split(',').map(d => d.trim()).filter(Boolean);
+      setDependencies(list);
+    } else {
+      setDependencies([]);
+    }
     setBodyText(body);
   };
 
@@ -219,6 +233,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
 
     // Format frontmatter and body
     let frontmatter = `---\ntitle: ${title.trim()}\ndatestart: ${dateStart.trim()}\ndone: ${done}\n`;
+    if (dependencies.length > 0) {
+      frontmatter += `dependencies: [${dependencies.join(', ')}]\n`;
+    }
     if (dateEnd.trim()) {
       frontmatter += `dateend: ${dateEnd.trim()}\n`;
     }
@@ -667,6 +684,86 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                     placeholder="https://linkedin.com/in/..."
                     className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none"
                   />
+                </div>
+
+                {/* Dependencies Selection */}
+                <div className="flex flex-col gap-1 col-span-2 relative">
+                  <label className="text-[10px] uppercase tracking-wider text-slate-500">Dependencies (Required Instances)</label>
+                  
+                  {/* Selected Dependencies Badges */}
+                  {dependencies.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2 p-2 bg-slate-950/40 border border-slate-800 rounded-lg min-h-[38px] items-center">
+                      {dependencies.map(depId => {
+                        const depEntry = entries.find(e => e.id === depId);
+                        const depTitle = depEntry ? depEntry.title : depId;
+                        return (
+                          <span key={depId} className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#15191e] border border-slate-750 text-slate-350 text-[10px] font-bold uppercase tracking-wider">
+                            <span>{depTitle}</span>
+                            <button
+                              type="button"
+                              onClick={() => setDependencies(prev => prev.filter(d => d !== depId))}
+                              className="text-red-500 hover:text-red-400 font-bold ml-1 text-xs select-none"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Suggestion Autocomplete Search Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={depQuery}
+                      onChange={(e) => setDepQuery(e.target.value)}
+                      placeholder="Type to search existing cards..."
+                      className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none placeholder-slate-650 text-xs"
+                    />
+                    
+                    {/* Suggestions list */}
+                    {depQuery.trim() !== '' && (
+                      <div className="absolute left-0 right-0 mt-1 max-h-[140px] overflow-y-auto bg-[#15191e] border border-slate-750 rounded-lg shadow-xl z-50 select-none">
+                        {(() => {
+                          const queryLower = depQuery.toLowerCase();
+                          const currentId = editEntry ? editEntry.id : '';
+                          const filtered = entries.filter(e => {
+                            // 1. Exclude itself
+                            if (e.id === currentId) return false;
+                            // 2. Exclude already selected
+                            if (dependencies.includes(e.id)) return false;
+                            // 3. Match query
+                            return e.title.toLowerCase().includes(queryLower) || e.id.toLowerCase().includes(queryLower);
+                          });
+
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="p-2.5 text-xs text-slate-500 italic text-center">
+                                No matching instances found
+                              </div>
+                            );
+                          }
+
+                          return filtered.map(e => (
+                            <div
+                              key={e.id}
+                              onClick={() => {
+                                setDependencies(prev => [...prev, e.id]);
+                                setDepQuery('');
+                              }}
+                              className="p-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer border-b border-slate-800 last:border-0 flex justify-between items-center"
+                            >
+                              <span>{e.title}</span>
+                              <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider">
+                                {e.source}
+                              </span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Done Checkbox */}

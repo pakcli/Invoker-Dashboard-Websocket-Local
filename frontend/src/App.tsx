@@ -12,6 +12,16 @@ import ItemCard from './components/ItemCard';
 import AchievementCard from './components/AchievementCard';
 import sfx from './lib/sfx';
 
+const getDependencyColor = (dep: PortfolioEntry) => {
+  if (dep.source === 'achv') return '#fbbf24'; // Gold
+  if (dep.source === 'item') return '#64748b'; // Slate
+  const skill = (dep.skill || '').toLowerCase();
+  if (skill.includes('q')) return '#06b6d4'; // Cyan
+  if (skill.includes('w')) return '#d946ef'; // Fuchsia
+  if (skill.includes('e')) return '#f97316'; // Orange
+  return '#64748b'; // Default Slate
+};
+
 export const App: React.FC = () => {
   const [entries, setEntries] = useState<PortfolioEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,6 +54,7 @@ export const App: React.FC = () => {
     return localStorage.getItem('activeCombo') || '';
   });
   const [selectedEntry, setSelectedEntry] = useState<PortfolioEntry | null>(null);
+  const [hoveredDepId, setHoveredDepId] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('soundEnabled');
     return saved !== null ? saved === 'true' : true;
@@ -79,6 +90,9 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem('statsMode');
     if (saved === 'current') return 'done';
     return (saved as 'done' | 'upcoming' | 'combined') || 'combined';
+  });
+  const [nodeLineMode, setNodeLineMode] = useState<'focus' | 'all'>(() => {
+    return (localStorage.getItem('nodeLineMode') as 'focus' | 'all') || 'all';
   });
 
   const [confirmModal, setConfirmModal] = useState<{
@@ -493,6 +507,8 @@ export const App: React.FC = () => {
                setThinnerCard={setThinnerCard}
                statsMode={statsMode}
                setStatsMode={setStatsMode}
+               nodeLineMode={nodeLineMode}
+               setNodeLineMode={(m) => { setNodeLineMode(m); localStorage.setItem('nodeLineMode', m); }}
              />
           </aside>
         )}
@@ -535,6 +551,7 @@ export const App: React.FC = () => {
             thinnerCard={thinnerCard}
             checkedCards={checkedCards}
             onToggleChecked={toggleCardChecked}
+            nodeLineMode={nodeLineMode}
           />
         </section>
       </main>
@@ -566,6 +583,158 @@ export const App: React.FC = () => {
 
             {/* Modal Body / Markdown Content */}
             <div className="flex-1 overflow-y-auto p-6 prose prose-invert max-w-none text-slate-300">
+              {(() => {
+                const depIds = selectedEntry.dependencies || [];
+                const validDeps = depIds
+                  .map(id => entries.find(e => e.id === id))
+                  .filter((e): e is PortfolioEntry => !!e);
+
+                if (validDeps.length === 0) return null;
+
+                return (
+                  <div className="mb-6 p-4 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
+                      <span>Connection Network</span>
+                      <span className="text-[9px] text-slate-650 font-medium normal-case">Hover to identify • Click to navigate</span>
+                    </div>
+                    <div className="relative w-full" style={{ height: `${Math.max(100, validDeps.length * 36 + 40)}px` }}>
+                      <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(100, validDeps.length * 36 + 40)}`} preserveAspectRatio="xMidYMid meet">
+                        {/* Draw Wires */}
+                        {validDeps.map((dep, idx) => {
+                          const N = validDeps.length;
+                          const svgH = Math.max(100, N * 36 + 40);
+                          const yStart = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
+                          const yEnd = svgH / 2;
+                          const xStart = 50;
+                          const xEnd = 370;
+                          const dx = (xEnd - xStart) / 2;
+                          const pathD = `M ${xStart} ${yStart} C ${xStart + dx} ${yStart}, ${xEnd - dx} ${yEnd}, ${xEnd} ${yEnd}`;
+                          const isHovered = hoveredDepId === dep.id;
+                          const depColor = getDependencyColor(dep);
+                          
+                          return (
+                            <path
+                              key={`wire-${dep.id}`}
+                              d={pathD}
+                              fill="none"
+                              stroke={isHovered ? depColor : "rgba(148, 163, 184, 0.18)"}
+                              strokeWidth={isHovered ? 2.5 : 1.2}
+                              className="transition-all duration-350 ease-out"
+                            />
+                          );
+                        })}
+
+                        {/* Draw Left Nodes (Dependencies) */}
+                        {validDeps.map((dep, idx) => {
+                          const N = validDeps.length;
+                          const svgH = Math.max(100, N * 36 + 40);
+                          const y = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
+                          const x = 50;
+                          const depColor = getDependencyColor(dep);
+                          const isHovered = hoveredDepId === dep.id;
+                          // Truncate title to ~22 chars for the label
+                          const label = dep.title.length > 22 ? dep.title.slice(0, 21) + '…' : dep.title;
+
+                          return (
+                            <g
+                              key={`node-dep-${dep.id}`}
+                              className="cursor-pointer group"
+                              onMouseEnter={() => setHoveredDepId(dep.id)}
+                              onMouseLeave={() => setHoveredDepId(null)}
+                              onClick={() => {
+                                if (soundEnabled) sfx.playTick();
+                                setSelectedEntry(dep);
+                              }}
+                            >
+                              {/* Outer Glow on Hover */}
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r={isHovered ? 12 : 0}
+                                fill={depColor}
+                                opacity={0.25}
+                                className="transition-all duration-200"
+                              />
+                              {/* Inner Circle */}
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r={7}
+                                fill={depColor}
+                                stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"}
+                                strokeWidth={1.5}
+                                className="transition-all duration-200"
+                              />
+                              {/* Label to the right of the node */}
+                              <text
+                                x={x + 14}
+                                y={y + 4}
+                                fontSize={10}
+                                fill={isHovered ? '#e2e8f0' : '#64748b'}
+                                fontFamily="ui-monospace, monospace"
+                                fontWeight={isHovered ? 700 : 500}
+                                className="transition-all duration-200 pointer-events-none select-none"
+                              >
+                                {label}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Draw Right Node (Current Card) */}
+                        {(() => {
+                          const N = validDeps.length;
+                          const svgH = Math.max(100, N * 36 + 40);
+                          const x = 370;
+                          const y = svgH / 2;
+                          const currentColor = getDependencyColor(selectedEntry);
+                          const label = selectedEntry.title.length > 14 ? selectedEntry.title.slice(0, 13) + '…' : selectedEntry.title;
+                          return (
+                            <g className="cursor-default">
+                              {/* Glow */}
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r={16}
+                                fill={currentColor}
+                                opacity={0.15}
+                              />
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r={10}
+                                fill={currentColor}
+                                stroke="rgba(0,0,0,0.6)"
+                                strokeWidth={2}
+                              />
+                              {/* Central dot */}
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r={3}
+                                fill="#ffffff"
+                              />
+                              {/* Label to the right of the current node */}
+                              <text
+                                x={x + 16}
+                                y={y + 4}
+                                fontSize={10}
+                                fill="#cbd5e1"
+                                fontFamily="ui-monospace, monospace"
+                                fontWeight={700}
+                                className="pointer-events-none select-none"
+                              >
+                                {label}
+                              </text>
+                            </g>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {selectedEntry.imgPath && (
                 selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
                   <div className="w-full mb-6">
@@ -677,6 +846,7 @@ export const App: React.FC = () => {
         }}
         formalMode={formalMode}
         editEntry={editEntry}
+        entries={entries}
       />
 
       {/* Dreaming Modal Popup */}

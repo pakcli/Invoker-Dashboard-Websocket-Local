@@ -24,6 +24,8 @@ interface HUDProps {
   setThinnerCard: (thinner: boolean) => void;
   statsMode: 'done' | 'upcoming' | 'combined';
   setStatsMode: (mode: 'done' | 'upcoming' | 'combined') => void;
+  nodeLineMode: 'focus' | 'all';
+  setNodeLineMode: (mode: 'focus' | 'all') => void;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -48,6 +50,8 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setThinnerCard,
   statsMode,
   setStatsMode,
+  nodeLineMode,
+  setNodeLineMode,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
 
@@ -502,6 +506,36 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             }`}
           >
             Thinner
+          </button>
+        </div>
+      </div>
+
+      {/* Node Lines Mode Switcher */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Node Lines</span>
+          <span className="text-slate-400 font-bold capitalize">{nodeLineMode === 'focus' ? 'Focus Mode' : 'Show All'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setNodeLineMode('focus')}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              nodeLineMode === 'focus'
+                ? 'bg-[#15191e] text-fuchsia-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Focus
+          </button>
+          <button
+            onClick={() => setNodeLineMode('all')}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              nodeLineMode === 'all'
+                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Show All
           </button>
         </div>
       </div>

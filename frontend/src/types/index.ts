@@ -12,6 +12,7 @@ export interface PortfolioEntry {
   attachments?: string[];
   body: string;
   done?: boolean;
+  dependencies?: string[];
 }
 
 export type OrbType = 'Q' | 'W' | 'E';

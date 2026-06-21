@@ -78,6 +78,14 @@ def scan_directory(watch_dir):
                     done = done.lower() == "true"
                 else:
                     done = bool(done)
+
+                dependencies = post.get("dependencies", [])
+                if isinstance(dependencies, str):
+                    dependencies = [d.strip() for d in dependencies.split(",") if d.strip()]
+                elif isinstance(dependencies, list):
+                    dependencies = [str(d).strip() for d in dependencies if d]
+                else:
+                    dependencies = []
                     
                 img_name = ""
                 if os.path.exists(entry_path):
@@ -114,7 +122,8 @@ def scan_directory(watch_dir):
                     "imgPath": img_path,
                     "attachments": attachments,
                     "body": post.content,
-                    "done": done
+                    "done": done,
+                    "dependencies": dependencies
                 })
                 
             except Exception as e:
