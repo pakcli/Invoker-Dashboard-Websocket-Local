@@ -32,7 +32,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   return (
-    <div className={`bg-[#12161b]/95 border border-slate-800/80 rounded-lg hover:border-blue-500/50 transition-all duration-300 shadow-md group max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 ${
+    <div className={`bg-[#12161b]/95 border border-slate-800/80 rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 ${
       thinnerCard ? 'aspect-[4/1] p-3' : 'aspect-[4/3] p-5'
     }`}>
       <div className="flex-1 flex flex-col min-h-0">
@@ -45,7 +45,7 @@ export const ProjectCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, 
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start gap-2">
-              <h3 className="text-md font-bold dark:text-slate-100 text-slate-800 group-hover:text-blue-500 dark:group-hover:text-quas transition-colors line-clamp-1">
+              <h3 className="text-md font-bold dark:text-slate-100 text-slate-800 transition-colors line-clamp-1">
                 {entry.title}
               </h3>
               <span className="text-[9px] tracking-wider font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 whitespace-nowrap">

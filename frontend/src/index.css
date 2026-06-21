@@ -68,13 +68,13 @@ body.light ::-webkit-scrollbar-thumb:hover {
 }
 
 .achievement-card-glow {
-  box-shadow: 0 0 25px rgba(255, 215, 0, 0.55), inset 0 0 0 2.5px rgba(255, 215, 0, 0.8), inset 0 0 6px rgba(255, 215, 0, 0.2) !important;
-  border-color: rgba(255, 215, 0, 0.8) !important;
+  box-shadow: 0 0 25px rgba(212, 175, 80, 0.55), inset 0 0 0 2.5px rgba(212, 175, 80, 0.8), inset 0 0 6px rgba(212, 175, 80, 0.2) !important;
+  border-color: rgba(212, 175, 80, 0.8) !important;
 }
 
 .achievement-card-glow:hover {
-  box-shadow: 0 0 35px rgba(255, 215, 0, 0.85), inset 0 0 0 3.5px rgba(255, 215, 0, 0.95), inset 0 0 8px rgba(255, 215, 0, 0.3) !important;
-  border-color: rgba(255, 215, 0, 1) !important;
+  box-shadow: 0 0 35px rgba(212, 175, 80, 0.85), inset 0 0 0 3.5px rgba(212, 175, 80, 0.95), inset 0 0 8px rgba(212, 175, 80, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
 .invoke-btn-glow {

@@ -166,7 +166,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    if (!isFolderNameCustom) {
+    if (!isEditMode && !isFolderNameCustom) {
       const generated = val.toLowerCase().replace(/[^a-z0-9_\-]/g, '-').replace(/-+/g, '-').replace(/^[-_]+|[-_]+$/g, '');
       setFolderName(generated);
     }
@@ -178,9 +178,11 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     if (extension === 'md') {
       const text = await file.text();
       parseMD(text);
-      const baseName = file.name.replace(/\.md$/, '').toLowerCase().replace(/[^a-z0-9_\-]/g, '-');
-      setFolderName(baseName);
-      setIsFolderNameCustom(true);
+      if (!isEditMode) {
+        const baseName = file.name.replace(/\.md$/, '').toLowerCase().replace(/[^a-z0-9_\-]/g, '-');
+        setFolderName(baseName);
+        setIsFolderNameCustom(true);
+      }
     } else if (['png', 'jpg', 'jpeg', 'pdf'].includes(extension || '')) {
       setSelectedFiles(prev => {
         if (prev.some(f => f.name === file.name)) return prev;
@@ -243,6 +245,13 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     // Add main thumbnail choice
     if (thumbnailFilename) {
       formData.append('thumbnailFilename', thumbnailFilename);
+    }
+
+    if (isEditMode && editEntry) {
+      const parts = editEntry.folderPath.replace(/\\/g, '/').split('/');
+      const origFolder = parts[parts.length - 1] || '';
+      formData.append('originalCategory', editEntry.source);
+      formData.append('originalFolderName', origFolder);
     }
 
     try {
@@ -395,35 +404,46 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
           <>
             <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#15191e] shrink-0">
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setStep(1)}
-                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-                  title="Back to category selection"
-                >
-                  <ArrowLeft size={16} />
-                </button>
+                {!isEditMode && (
+                  <button
+                    onClick={() => setStep(1)}
+                    className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                    title="Back to category selection"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                )}
                 <div>
                   <h2 className="text-sm font-black text-slate-100 uppercase tracking-widest font-dota flex items-center gap-1.5">
                     <span>{isEditMode ? 'Edit' : 'Create'} {category === 'proj' ? 'Project' : category === 'cert' ? 'Certification' : category === 'item' ? 'Item' : 'Achievement'}</span>
                   </h2>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Target Dir:</span>
-                    {isEditMode ? (
-                      <span className="text-[10px] text-cyan-400 font-mono font-bold px-1 py-0.5 bg-slate-950/40 rounded border border-slate-800/40">
-                        data/{category}/{folderName}
-                      </span>
-                    ) : (
+                    <span className="text-[10px] text-cyan-400 font-mono font-bold flex items-center gap-1 bg-slate-950/40 rounded border border-slate-800/40 px-1.5 py-0.5">
+                      <span>data/</span>
                       <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value as 'proj' | 'cert' | 'item' | 'achv')}
-                        className="px-1 py-0.5 bg-slate-900 border border-slate-800 rounded text-[9px] text-cyan-400 focus:outline-none focus:border-cyan-500/50 font-mono font-bold cursor-pointer"
+                        className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-[9px] text-cyan-400 focus:outline-none focus:border-cyan-500/50 font-mono font-bold cursor-pointer"
                       >
-                        <option value="proj">data/proj/</option>
-                        <option value="cert">data/cert/</option>
-                        <option value="item">data/item/</option>
-                        <option value="achv">data/achv/</option>
+                        <option value="proj">proj</option>
+                        <option value="cert">cert</option>
+                        <option value="item">item</option>
+                        <option value="achv">achv</option>
                       </select>
-                    )}
+                      <span>/</span>
+                      <input
+                        type="text"
+                        value={folderName}
+                        onChange={(e) => {
+                          const val = e.target.value.toLowerCase().replace(/[^a-z0-9_\-]/g, '-').replace(/-+/g, '-');
+                          setFolderName(val);
+                          setIsFolderNameCustom(true);
+                        }}
+                        placeholder="folder-name"
+                        className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-[9px] text-cyan-400 focus:outline-none focus:border-cyan-500/50 font-mono font-bold max-w-[150px]"
+                      />
+                    </span>
                   </div>
                 </div>
               </div>

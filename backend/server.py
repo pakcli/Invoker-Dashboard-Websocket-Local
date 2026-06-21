@@ -191,6 +191,30 @@ def create_entry():
     if not target_dir.startswith(abs_watch_dir):
         return jsonify({"error": "Access denied: Path is outside the watched directory"}), 403
 
+    # Handle folder moving/renaming if edit mode passed original coordinates
+    original_category = request.form.get('originalCategory')
+    original_folder_name = request.form.get('originalFolderName')
+
+    if original_category and original_folder_name:
+        orig_category_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', original_category)
+        orig_folder_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', original_folder_name)
+        
+        old_dir = os.path.abspath(os.path.join(WATCH_DIR, orig_category_sanitized, orig_folder_sanitized))
+        
+        if old_dir.startswith(abs_watch_dir) and old_dir != abs_watch_dir and os.path.exists(old_dir):
+            if old_dir != target_dir:
+                import shutil
+                if os.path.exists(target_dir):
+                    try:
+                        shutil.rmtree(target_dir)
+                    except:
+                        pass
+                try:
+                    os.makedirs(os.path.dirname(target_dir), exist_ok=True)
+                    shutil.move(old_dir, target_dir)
+                except Exception as e:
+                    print(f"Error moving {old_dir} to {target_dir}: {e}")
+
     os.makedirs(target_dir, exist_ok=True)
 
     # Save index.md

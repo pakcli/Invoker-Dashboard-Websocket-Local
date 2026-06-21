@@ -1,6 +1,6 @@
 ---
-title: Lomba Fectar
-datestart: 2026-06-17
+title: Lomba Fectar Juara 1
+datestart: 2024-09-10
 skill: eew
 ---
 

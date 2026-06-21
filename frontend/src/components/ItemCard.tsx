@@ -32,7 +32,7 @@ export const ItemCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thi
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   return (
-    <div className={`bg-[#12161b]/95 border border-slate-800 rounded-lg hover:border-slate-650 transition-all duration-300 shadow-md group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 ${
+    <div className={`bg-[#12161b]/95 border border-slate-800 rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 ${
       thinnerCard ? 'aspect-[4/1] p-3' : 'aspect-[4/3] p-5'
     }`}>
       {/* Decorative icon background */}
@@ -50,7 +50,7 @@ export const ItemCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thi
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start gap-2">
-              <h3 className="text-sm font-bold dark:text-slate-100 text-slate-800 group-hover:text-amber-500 dark:group-hover:text-exort transition-colors truncate">
+              <h3 className="text-sm font-bold dark:text-slate-100 text-slate-800 transition-colors truncate">
                 {entry.title}
               </h3>
               <span className="text-[8px] tracking-wider font-semibold px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/10 whitespace-nowrap">

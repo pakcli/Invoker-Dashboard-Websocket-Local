@@ -32,7 +32,7 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   return (
-    <div className={`bg-[#121418]/90 border-[3px] border-[#ffd700]/80 rounded-xl hover:border-[#ffd700] transition-all duration-300 achievement-card-glow shadow-[0_0_20px_rgba(255,215,0,0.25)] group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 ${
+    <div className={`bg-[#121418]/90 border-[3px] border-[#d4af50]/80 rounded-xl hover:border-slate-200/60 transition-all duration-300 achievement-card-glow shadow-[0_0_20px_rgba(212,175,80,0.25)] group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 ${
       thinnerCard ? 'aspect-[4/1] p-3' : 'aspect-[4/3] p-5'
     }`}>
       {/* Decorative background trophy icon */}
@@ -50,7 +50,7 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start gap-2">
-              <h3 className="text-sm font-bold dark:text-slate-100 text-slate-800 group-hover:text-amber-500 transition-colors line-clamp-1">
+              <h3 className="text-sm font-bold dark:text-slate-100 text-slate-800 transition-colors line-clamp-1">
                 {entry.title}
               </h3>
               <span className="text-[9px] tracking-wider font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">

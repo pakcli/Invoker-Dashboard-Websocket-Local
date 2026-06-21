@@ -22,8 +22,8 @@ export default {
           glow: 'rgba(255, 106, 0, 0.4)',
         },
         gold: {
-          DEFAULT: '#ffd700',
-          glow: 'rgba(255, 215, 0, 0.4)',
+          DEFAULT: '#d4af50',
+          glow: 'rgba(212, 175, 80, 0.4)',
         },
         dota: {
           dark: '#0b0d10',
@@ -40,7 +40,7 @@ export default {
         wex: '0 0 15px rgba(208, 0, 255, 0.6)',
         exort: '0 0 15px rgba(255, 106, 0, 0.6)',
         invoke: '0 0 20px rgba(74, 222, 128, 0.8)',
-        gold: '0 0 15px rgba(255, 215, 0, 0.6)',
+        gold: '0 0 15px rgba(212, 175, 80, 0.6)',
       }
     },
   },
