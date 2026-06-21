@@ -1,0 +1,435 @@
+import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { X, Github, Folder, Info } from 'lucide-react';
+import { PortfolioEntry, OrbType, DashboardStats } from './types';
+import SearchBar from './components/SearchBar';
+import InvokerHUD from './components/InvokerHUD';
+import Timeline from './components/Timeline';
+import sfx from './lib/sfx';
+
+export const App: React.FC = () => {
+  const [entries, setEntries] = useState<PortfolioEntry[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLightMode, setIsLightMode] = useState(false);
+  const [mode, setMode] = useState<'all' | 'proj' | 'items'>('all');
+  const [subFilters, setSubFilters] = useState({ cert: true, achv: true, item: true });
+  const [orbs, setOrbs] = useState<OrbType[]>([]);
+  const [activeCombo, setActiveCombo] = useState('');
+  const [selectedEntry, setSelectedEntry] = useState<PortfolioEntry | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [volume, setVolume] = useState(0.5);
+  const [activeStatFilter, setActiveStatFilter] = useState<string | null>(null);
+
+  // Sync light/dark mode class on body
+  useEffect(() => {
+    if (isLightMode) {
+      document.body.classList.add('light');
+    } else {
+      document.body.classList.remove('light');
+    }
+  }, [isLightMode]);
+
+  // Initial fetch and WebSocket listener
+  useEffect(() => {
+    // Initial fetch
+    fetch('/api/entries')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setEntries(data);
+        }
+      })
+      .catch(err => console.error('Failed to fetch initial entries:', err));
+
+    // Connect to WebSocket with auto-reconnect
+    let ws: WebSocket | null = null;
+    let timer: number;
+
+    const connectWS = () => {
+      const isHttps = window.location.protocol === 'https:';
+      const wsProto = isHttps ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProto}//${window.location.host}/ws`;
+      
+      console.log(`[WS] Connecting to ${wsUrl}`);
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.event === 'dashboard_update' && Array.isArray(payload.data)) {
+            console.log('[WS] Received update with', payload.data.length, 'entries');
+            setEntries(payload.data);
+          }
+        } catch (err) {
+          console.error('[WS] Error processing message:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('[WS] Connection closed, retrying in 3 seconds...');
+        timer = window.setTimeout(connectWS, 3000);
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+    };
+
+    connectWS();
+
+    return () => {
+      if (ws) ws.close();
+      clearTimeout(timer);
+    };
+  }, []);
+
+  // Keyboard Event Listener for Orbs
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture keys if typing in search bar or input elements
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      const key = e.key.toUpperCase();
+      if (key === 'Q') {
+        e.preventDefault();
+        addOrb('Q');
+      } else if (key === 'W') {
+        e.preventDefault();
+        addOrb('W');
+      } else if (key === 'E') {
+        e.preventDefault();
+        addOrb('E');
+      } else if (key === 'R') {
+        e.preventDefault();
+        invokeCombo();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        clearOrbs();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [orbs, soundEnabled]); // dependency on orbs and soundEnabled to have latest states in handler
+
+  const addOrb = (orb: OrbType) => {
+    if (soundEnabled) {
+      if (orb === 'Q') sfx.playQuas();
+      else if (orb === 'W') sfx.playWex();
+      else if (orb === 'E') sfx.playExort();
+    }
+    setOrbs(prev => {
+      const next = [...prev, orb];
+      if (next.length > 3) {
+        next.shift();
+      }
+      return next;
+    });
+  };
+
+  const clearOrbs = () => {
+    if (soundEnabled) sfx.playTick();
+    setOrbs([]);
+    setActiveCombo('');
+  };
+
+  const invokeCombo = () => {
+    if (orbs.length < 3) return;
+    if (soundEnabled) sfx.playInvoke();
+    
+    // Create sorted lower-case combination key (e.g. qqw, qwe)
+    const combo = orbs.map(o => o.toLowerCase()).sort().join('');
+    setActiveCombo(combo);
+  };
+
+  // Sync external sfx state and volume
+  useEffect(() => {
+    sfx.toggle(soundEnabled);
+    sfx.setVolume(volume);
+  }, [soundEnabled, volume]);
+
+  const handleOpenFolder = async (folderPath: string) => {
+    if (soundEnabled) sfx.playTick();
+    try {
+      const res = await fetch('/api/open-folder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ folderPath }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(`Error: ${result.error || 'Failed to open directory'}`);
+      }
+    } catch (err) {
+      alert(`Connection failed: ${err}`);
+    }
+  };
+
+  // Filter entries except for the interactive stat filter (to compute stats)
+  const getEntriesForStats = () => {
+    return entries.filter(entry => {
+      // 1. Filter by category Mode
+      if (mode === 'proj' && entry.source !== 'proj') {
+        return false;
+      }
+      if (mode === 'items') {
+        const matchesSub = 
+          (entry.source === 'cert' && subFilters.cert) ||
+          (entry.source === 'achv' && subFilters.achv) ||
+          (entry.source === 'item' && subFilters.item);
+        if (!matchesSub) return false;
+      }
+
+      // 2. Filter by Invoked Combo
+      if (activeCombo) {
+        if (entry.skill !== activeCombo) {
+          return false;
+        }
+      }
+
+      // 3. Filter by Regex search query
+      if (searchQuery.trim() !== '') {
+        try {
+          const regex = new RegExp(searchQuery, 'i');
+          const titleMatch = regex.test(entry.title);
+          const bodyMatch = regex.test(entry.body);
+          const sourceMatch = regex.test(entry.source);
+          const skillMatch = regex.test(entry.skill || '');
+          if (!titleMatch && !bodyMatch && !sourceMatch && !skillMatch) {
+            return false;
+          }
+        } catch (e) {
+          // If regex fails to compile, ignore filtering or show nothing
+        }
+      }
+
+      return true;
+    });
+  };
+
+  const entriesForStats = getEntriesForStats();
+
+  // Filter entries incorporating the interactive stat card override
+  const getFilteredEntries = () => {
+    return entriesForStats.filter(entry => {
+      if (activeStatFilter) {
+        const skillStr = entry.skill?.toLowerCase() || '';
+        if (activeStatFilter === 'quas' && !skillStr.includes('q')) return false;
+        if (activeStatFilter === 'wex' && !skillStr.includes('w')) return false;
+        if (activeStatFilter === 'exort' && !skillStr.includes('e')) return false;
+        if (activeStatFilter === 'gold' && entry.source !== 'achv') return false;
+        if (activeStatFilter === 'grey' && entry.skill) return false;
+      }
+      return true;
+    });
+  };
+
+  const filteredEntries = getFilteredEntries();
+
+  // Compute stats on the items before applying the specific stat override
+  const stats: DashboardStats = (() => {
+    let quas = 0;
+    let wex = 0;
+    let exort = 0;
+    let gold = 0;
+    let grey = 0;
+
+    entriesForStats.forEach(item => {
+      if (item.source === 'achv') {
+        gold++;
+      }
+      if (!item.skill) {
+        grey++;
+      } else {
+        const s = item.skill.toLowerCase();
+        if (s.includes('q')) quas++;
+        if (s.includes('w')) wex++;
+        if (s.includes('e')) exort++;
+      }
+    });
+
+    return {
+      total: entriesForStats.length,
+      quas,
+      wex,
+      exort,
+      gold,
+      grey,
+    };
+  })();
+
+  const handleMoreClick = (entry: PortfolioEntry) => {
+    if (soundEnabled) sfx.playTick();
+    setSelectedEntry(entry);
+  };
+
+  const handleCloseModal = () => {
+    if (soundEnabled) sfx.playTick();
+    setSelectedEntry(null);
+  };
+
+  return (
+    <div className="min-h-screen font-dota flex flex-col transition-colors duration-200">
+      {/* Top Navigation / Search Header */}
+      <header className="sticky top-0 z-30 w-full p-4 dark:bg-[#0b0d10]/80 bg-slate-100/80 backdrop-blur-md border-b dark:border-slate-900 border-slate-200 transition-colors">
+        <div className="w-full px-6 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-purple-500 to-orange-500 flex items-center justify-center shadow-lg text-white font-black text-lg">
+              🔮
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-widest text-slate-800 dark:text-slate-100">
+                INVOKER PORTFOLIO
+              </h1>
+              <p className="text-[10px] uppercase tracking-widest dark:text-slate-500 text-slate-400 font-bold">
+                The Arch-Mage Dev Archives
+              </p>
+            </div>
+          </div>
+          <div className="flex-1 max-w-xl">
+            <SearchBar
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              isLightMode={isLightMode}
+              setIsLightMode={setIsLightMode}
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Layout - Full-screen layout */}
+      <main className="flex-1 w-full px-6 py-6 flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Side: Interactive HUD (exactly 350px width, left-aligned) */}
+        <aside className="w-full lg:w-[350px] lg:min-w-[350px] lg:max-w-[350px] lg:sticky lg:top-24 shrink-0">
+          <InvokerHUD
+            mode={mode}
+            setMode={setMode}
+            subFilters={subFilters}
+            setSubFilters={setSubFilters}
+            orbs={orbs}
+            onClear={clearOrbs}
+            onInvoke={invokeCombo}
+            activeCombo={activeCombo}
+            stats={stats}
+            soundEnabled={soundEnabled}
+            setSoundEnabled={setSoundEnabled}
+            volume={volume}
+            setVolume={setVolume}
+            activeStatFilter={activeStatFilter}
+            setActiveStatFilter={setActiveStatFilter}
+          />
+        </aside>
+
+        {/* Right Side: Timeline Display (Fills the remaining main area) */}
+        <section className="flex-1 min-w-0 min-h-screen">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-black dark:text-slate-400 text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <span>Archives Timeline Feed</span>
+              {activeCombo && (
+                <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
+                  Active Filter: Combo {activeCombo}
+                </span>
+              )}
+            </h2>
+            <span className="text-xs text-slate-400 font-semibold">
+              Showing {filteredEntries.length} entries
+            </span>
+          </div>
+
+          <Timeline
+            entries={filteredEntries}
+            onOpenFolder={handleOpenFolder}
+            onMore={handleMoreClick}
+          />
+        </section>
+      </main>
+
+      {/* Details Markdown Modal */}
+      {selectedEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="dark:bg-[#12161b] bg-white border-2 dark:border-slate-800 border-slate-200 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden scale-in">
+            {/* Modal Header */}
+            <div className="p-4 border-b dark:border-slate-800 border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+              <div>
+                <span className="text-[9px] font-black px-2 py-0.5 rounded dark:bg-slate-800 bg-slate-200 text-slate-600 dark:text-slate-400 border dark:border-slate-700 border-slate-300 uppercase tracking-wider mr-2">
+                  {selectedEntry.source}
+                </span>
+                <span className="text-xs dark:text-slate-400 text-slate-500 font-semibold">
+                  {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
+                </span>
+                <h2 className="text-lg font-black dark:text-slate-100 text-slate-800 mt-1">
+                  {selectedEntry.title}
+                </h2>
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="p-1 rounded-lg dark:hover:bg-slate-800 hover:bg-slate-200 text-slate-400 dark:text-slate-500 dark:hover:text-slate-200 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body / Markdown Content */}
+            <div className="flex-1 overflow-y-auto p-6 prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300">
+              {selectedEntry.imgPath && (
+                <div className="w-full h-48 rounded-lg overflow-hidden border dark:border-slate-800 border-slate-200 mb-6 bg-slate-900/50">
+                  <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+              
+              {selectedEntry.body ? (
+                <ReactMarkdown className="markdown-content space-y-4">
+                  {selectedEntry.body}
+                </ReactMarkdown>
+              ) : (
+                <p className="text-xs italic text-slate-400 flex items-center gap-1">
+                  <Info size={14} />
+                  <span>No detailed archive description provided in index.md.</span>
+                </p>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t dark:border-slate-800 border-slate-200 flex justify-end gap-2 bg-slate-50 dark:bg-slate-900/50">
+              <button
+                onClick={() => handleOpenFolder(selectedEntry.folderPath)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+              >
+                <Folder size={14} />
+                <span>Open Local Folder</span>
+              </button>
+              {selectedEntry.github && (
+                <a
+                  href={selectedEntry.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-4 py-2 dark:bg-slate-800 bg-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors border dark:border-transparent border-slate-300"
+                >
+                  <Github size={14} />
+                  <span>View GitHub</span>
+                </a>
+              )}
+              <button
+                onClick={handleCloseModal}
+                className="px-4 py-2 dark:bg-slate-900 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 border dark:border-slate-800 border-slate-200 rounded-lg text-xs font-bold transition-colors text-slate-600 dark:text-slate-400"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;

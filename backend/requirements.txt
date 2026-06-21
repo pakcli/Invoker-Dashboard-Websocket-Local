@@ -1,0 +1,6 @@
+flask
+flask-sock
+watchdog
+python-frontmatter
+cryptography
+pillow

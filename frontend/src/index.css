@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0b0d10] text-[#e2e8f0] transition-colors duration-200;
+  }
+  
+  body.light {
+    @apply bg-slate-50 text-slate-800;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(11, 13, 16, 0.5);
+}
+
+body.light ::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+body.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+body.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Keyframes and Animations */
+@keyframes orb-float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.04);
+  }
+}
+
+@keyframes gold-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.25), inset 0 0 3px rgba(255, 215, 0, 0.15);
+    border-color: rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.5), inset 0 0 8px rgba(255, 215, 0, 0.35);
+    border-color: rgba(255, 215, 0, 0.8);
+  }
+}
+
+@keyframes invoke-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.8);
+  }
+}
+
+.orb-animate {
+  animation: orb-float 3s ease-in-out infinite;
+}
+
+.achievement-card-glow {
+  animation: gold-glow-pulse 4s ease-in-out infinite;
+}
+
+.invoke-btn-glow {
+  animation: invoke-glow-pulse 2s ease-in-out infinite;
+}
