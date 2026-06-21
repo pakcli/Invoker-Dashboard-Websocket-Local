@@ -13,7 +13,7 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
   const gradient = getSkillGradient(entry.skill);
 
   return (
-    <div className="dark:bg-[#121418] bg-amber-50/20 border-2 dark:border-[#ffd700]/70 border-amber-400 rounded-xl p-5 hover:border-amber-400 transition-all duration-300 dark:achievement-card-glow shadow-[0_0_10px_rgba(255,215,0,0.15)] group relative overflow-hidden aspect-[4/3] max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0">
+    <div className="bg-[#121418]/90 border-[3px] border-[#ffd700]/80 rounded-xl p-5 hover:border-[#ffd700] transition-all duration-300 achievement-card-glow shadow-[0_0_20px_rgba(255,215,0,0.25)] group relative overflow-hidden aspect-[4/3] max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0">
       {/* Decorative background trophy icon */}
       <div className="absolute -right-4 -bottom-4 opacity-5 dark:opacity-[0.03] group-hover:scale-110 transition-transform">
         <Trophy size={100} />

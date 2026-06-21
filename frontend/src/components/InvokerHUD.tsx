@@ -82,12 +82,12 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   };
 
   return (
-    <div className="dark:bg-[#111418] bg-white border dark:border-slate-800 border-slate-200 rounded-xl p-5 shadow-lg flex flex-col gap-5 sticky top-24 select-none">
+    <div className="bg-[#111418] border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col gap-5 select-none">
       {/* 1. Title Header (without volume) */}
       <div className="flex justify-between items-center pb-3 border-b dark:border-slate-800 border-slate-200">
         <div className="flex items-center gap-2">
           <Sparkles className="text-emerald-500 animate-spin" style={{ animationDuration: '6s' }} size={20} />
-          <h2 className="text-md font-bold tracking-widest text-slate-800 dark:text-slate-100 flex items-center gap-1.5 font-dota">
+          <h2 className="text-xs font-black tracking-wide text-slate-200 flex items-center gap-1.5 font-dota whitespace-nowrap">
             ⚡ THE ARCH-MAGE HUD ⚡
           </h2>
         </div>
@@ -95,7 +95,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
 
       {/* 1b. Mode Selector */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+        <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 whitespace-nowrap">
           Mode Selector
         </label>
         <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
@@ -117,7 +117,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       {/* Sub Checkboxes (Items Mode only) */}
       {mode === 'items' && (
         <div className="animate-fadeIn">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 whitespace-nowrap">
             Active Item Filters
           </label>
           <div className="flex flex-col gap-2 p-3 dark:bg-slate-900/60 bg-slate-50 border dark:border-slate-800 border-slate-200 rounded-lg">
@@ -142,13 +142,13 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       {/* 2. Dashboard Statistics (Interactive/Toggleable) */}
       <div>
         <div className="flex justify-between items-center mb-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Dashboard Statistics
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap">
+            HUD Statistics
           </label>
           {activeStatFilter && (
             <button
               onClick={() => setActiveStatFilter(null)}
-              className="text-[9px] text-red-500 hover:underline font-bold"
+              className="text-[8px] text-red-500 hover:underline font-bold whitespace-nowrap"
             >
               Clear Filter
             </button>
@@ -239,7 +239,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="p-3 dark:bg-slate-900 bg-slate-50 border dark:border-slate-800 border-slate-200 rounded-lg">
         <button
           onClick={() => setKeybindsExpanded(!keybindsExpanded)}
-          className="w-full flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 font-bold focus:outline-none"
+          className="w-full flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-bold focus:outline-none"
         >
           <div className="flex items-center gap-1.5">
             <HelpCircle size={14} />
@@ -277,11 +277,11 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       {/* 4. Invoker - Active Orbs Queue & Buttons */}
       <div>
         <div className="flex justify-between items-center mb-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Active Orbs Queue
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 whitespace-nowrap">
+            Active Orbs
           </label>
           {activeCombo && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-widest">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider whitespace-nowrap">
               Combo: {activeCombo}
             </span>
           )}
@@ -341,8 +341,8 @@ export const InvokerHUD: React.FC<HUDProps> = ({
 
       {/* Volume Slider (at the bottom) */}
       <div className="pt-3 border-t dark:border-slate-800 border-slate-200 flex flex-col gap-1.5">
-        <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          <span>Master Volume</span>
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <span className="whitespace-nowrap">Master Volume</span>
           <span className="text-[10px] dark:text-slate-400 text-slate-500 font-bold">{Math.round(volume * 100)}%</span>
         </div>
         <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border dark:border-slate-800/85 border-slate-200">

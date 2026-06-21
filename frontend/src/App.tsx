@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info } from 'lucide-react';
+import { X, Github, Folder, Info, Eye } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -10,7 +10,8 @@ import sfx from './lib/sfx';
 export const App: React.FC = () => {
   const [entries, setEntries] = useState<PortfolioEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLightMode, setIsLightMode] = useState(false);
+  const [sidebarPosition, setSidebarPosition] = useState<'left' | 'right'>('left');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mode, setMode] = useState<'all' | 'proj' | 'items'>('all');
   const [subFilters, setSubFilters] = useState({ cert: true, achv: true, item: true });
   const [orbs, setOrbs] = useState<OrbType[]>([]);
@@ -19,15 +20,6 @@ export const App: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [volume, setVolume] = useState(0.5);
   const [activeStatFilter, setActiveStatFilter] = useState<string | null>(null);
-
-  // Sync light/dark mode class on body
-  useEffect(() => {
-    if (isLightMode) {
-      document.body.classList.add('light');
-    } else {
-      document.body.classList.remove('light');
-    }
-  }, [isLightMode]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -279,55 +271,71 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen font-dota flex flex-col transition-colors duration-200">
-      {/* Top Navigation / Search Header */}
-      <header className="sticky top-0 z-30 w-full p-4 dark:bg-[#0b0d10]/80 bg-slate-100/80 backdrop-blur-md border-b dark:border-slate-900 border-slate-200 transition-colors">
-        <div className="w-full px-6 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-purple-500 to-orange-500 flex items-center justify-center shadow-lg text-white font-black text-lg">
-              🔮
+      {/* Floating Expand HUD Button when Sidebar is Collapsed */}
+      {sidebarCollapsed && (
+        <button
+          onClick={() => setSidebarCollapsed(false)}
+          className={`fixed top-6 z-40 p-3 rounded-full bg-[#111418] border border-slate-800 hover:border-emerald-500/50 text-emerald-500 hover:text-emerald-400 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-bounce ${
+            sidebarPosition === 'right' ? 'right-6' : 'left-6'
+          }`}
+          title="Expand Invoker HUD & Search"
+        >
+          <Eye size={22} />
+        </button>
+      )}
+
+      {/* Main Content Layout - Full-screen layout */}
+      <main className={`flex-1 w-full px-6 py-6 flex flex-col gap-8 items-start ${
+        sidebarPosition === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'
+      }`}>
+        {/* Interactive HUD Sidebar (exactly 350px width, left/right toggleable & collapsible) */}
+        {!sidebarCollapsed && (
+          <aside className="w-full lg:w-[240px] lg:min-w-[240px] lg:max-w-[240px] lg:sticky lg:top-6 shrink-0 flex flex-col gap-5">
+            {/* Logo Header */}
+            <div className="flex items-center gap-3 pb-2 border-b border-slate-800/80">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-purple-500 to-orange-500 flex items-center justify-center shadow-lg text-white font-black text-lg select-none">
+                🔮
+              </div>
+              <div>
+                <h1 className="text-sm font-black tracking-wide text-slate-100 font-dota whitespace-nowrap">
+                  INVOKER PORTFOLIO
+                </h1>
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">
+                  The Arch-Mage Dev Archives
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-extrabold tracking-widest text-slate-800 dark:text-slate-100">
-                INVOKER PORTFOLIO
-              </h1>
-              <p className="text-[10px] uppercase tracking-widest dark:text-slate-500 text-slate-400 font-bold">
-                The Arch-Mage Dev Archives
-              </p>
-            </div>
-          </div>
-          <div className="flex-1 max-w-xl">
+
+            {/* Search Bar */}
             <SearchBar
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              isLightMode={isLightMode}
-              setIsLightMode={setIsLightMode}
+              sidebarPosition={sidebarPosition}
+              setSidebarPosition={setSidebarPosition}
+              sidebarCollapsed={sidebarCollapsed}
+              setSidebarCollapsed={setSidebarCollapsed}
             />
-          </div>
-        </div>
-      </header>
 
-      {/* Main Content Layout - Full-screen layout */}
-      <main className="flex-1 w-full px-6 py-6 flex flex-col lg:flex-row gap-8 items-start">
-        {/* Left Side: Interactive HUD (exactly 350px width, left-aligned) */}
-        <aside className="w-full lg:w-[350px] lg:min-w-[350px] lg:max-w-[350px] lg:sticky lg:top-24 shrink-0">
-          <InvokerHUD
-            mode={mode}
-            setMode={setMode}
-            subFilters={subFilters}
-            setSubFilters={setSubFilters}
-            orbs={orbs}
-            onClear={clearOrbs}
-            onInvoke={invokeCombo}
-            activeCombo={activeCombo}
-            stats={stats}
-            soundEnabled={soundEnabled}
-            setSoundEnabled={setSoundEnabled}
-            volume={volume}
-            setVolume={setVolume}
-            activeStatFilter={activeStatFilter}
-            setActiveStatFilter={setActiveStatFilter}
-          />
-        </aside>
+            {/* Interactive HUD */}
+            <InvokerHUD
+              mode={mode}
+              setMode={setMode}
+              subFilters={subFilters}
+              setSubFilters={setSubFilters}
+              orbs={orbs}
+              onClear={clearOrbs}
+              onInvoke={invokeCombo}
+              activeCombo={activeCombo}
+              stats={stats}
+              soundEnabled={soundEnabled}
+              setSoundEnabled={setSoundEnabled}
+              volume={volume}
+              setVolume={setVolume}
+              activeStatFilter={activeStatFilter}
+              setActiveStatFilter={setActiveStatFilter}
+            />
+          </aside>
+        )}
 
         {/* Right Side: Timeline Display (Fills the remaining main area) */}
         <section className="flex-1 min-w-0 min-h-screen">
