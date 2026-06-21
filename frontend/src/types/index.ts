@@ -9,6 +9,7 @@ export interface PortfolioEntry {
   linkedin?: string;
   folderPath: string;
   imgPath?: string;
+  attachments?: string[];
   body: string;
 }
 

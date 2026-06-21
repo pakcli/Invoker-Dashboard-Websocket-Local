@@ -1,6 +1,7 @@
 import React from 'react';
 import { Cpu, Folder, FileText } from 'lucide-react';
 import { PortfolioEntry } from '../types';
+import PdfThumbnail from './PdfThumbnail';
 
 interface CardProps {
   entry: PortfolioEntry;
@@ -66,14 +67,18 @@ export const ItemCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thi
           <div className={`w-full flex-1 min-h-0 rounded overflow-hidden border dark:border-slate-800 border-slate-200 bg-slate-900/50 flex items-center justify-center ${
             thinnerCard ? 'mb-1.5' : 'mb-3'
           }`}>
-            <img 
-              src={entry.imgPath} 
-              alt={entry.title} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
+            {entry.imgPath.toLowerCase().endsWith('.pdf') ? (
+              <PdfThumbnail src={entry.imgPath} title={entry.title} />
+            ) : (
+              <img 
+                src={entry.imgPath} 
+                alt={entry.title} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            )}
           </div>
         ) : (
           <div className={`w-full flex-1 min-h-0 rounded border border-dashed dark:border-slate-800 border-slate-200 flex items-center justify-center text-slate-400 dark:text-slate-600 text-xs ${

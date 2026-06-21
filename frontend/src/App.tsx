@@ -61,6 +61,7 @@ export const App: React.FC = () => {
   const [isAddPopupOpen, setIsAddPopupOpen] = useState<boolean>(() => {
     return localStorage.getItem('isAddPopupOpen') === 'true';
   });
+  const [editEntry, setEditEntry] = useState<PortfolioEntry | null>(null);
 
   // Save settings and preferences to localStorage on change
   useEffect(() => {
@@ -470,9 +471,41 @@ export const App: React.FC = () => {
             {/* Modal Body / Markdown Content */}
             <div className="flex-1 overflow-y-auto p-6 prose prose-invert max-w-none text-slate-300">
               {selectedEntry.imgPath && (
-                <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-800 mb-6 bg-slate-900/50">
-                  <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
-                </div>
+                selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
+                  <div className="w-full mb-6">
+                    <div className="w-full h-[450px] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3">
+                      <iframe
+                        src={`${selectedEntry.imgPath}#toolbar=0`}
+                        className="w-full h-full border-none"
+                        title={selectedEntry.title}
+                      />
+                    </div>
+                    <div className="p-3 rounded-lg border border-slate-800 bg-[#15191e]/60 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded bg-red-950/30 border border-red-900/40 flex items-center justify-center text-red-500 font-bold text-xs select-none">
+                          PDF
+                        </div>
+                        <div className="truncate max-w-[200px] sm:max-w-sm">
+                          <p className="text-[11px] font-bold text-slate-200 truncate" title={selectedEntry.imgPath.split('/').pop()}>
+                            {selectedEntry.imgPath.split('/').pop()}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={selectedEntry.imgPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-red-650 hover:bg-red-600 text-white rounded text-xs font-bold transition-colors"
+                      >
+                        Open Full PDF
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-800 mb-6 bg-slate-900/50">
+                    <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
+                  </div>
+                )
               )}
               
               {selectedEntry.body ? (
@@ -519,6 +552,16 @@ export const App: React.FC = () => {
                 </a>
               )}
               <button
+                onClick={() => {
+                  setEditEntry(selectedEntry);
+                  setIsAddPopupOpen(true);
+                  setSelectedEntry(null);
+                }}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+              >
+                Edit
+              </button>
+              <button
                 onClick={handleCloseModal}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
               >
@@ -532,8 +575,12 @@ export const App: React.FC = () => {
       {/* Add New Instance Modal */}
       <AddInstanceModal
         isOpen={isAddPopupOpen}
-        onClose={() => setIsAddPopupOpen(false)}
+        onClose={() => {
+          setIsAddPopupOpen(false);
+          setEditEntry(null);
+        }}
         formalMode={formalMode}
+        editEntry={editEntry}
       />
     </div>
   );

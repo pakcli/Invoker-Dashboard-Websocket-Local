@@ -1,13 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft } from 'lucide-react';
+import { PortfolioEntry } from '../types';
 
 interface AddInstanceModalProps {
   isOpen: boolean;
   onClose: () => void;
   formalMode: boolean;
+  editEntry?: PortfolioEntry | null;
 }
 
-export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onClose, formalMode }) => {
+export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onClose, formalMode, editEntry }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [category, setCategory] = useState<'proj' | 'cert' | 'item' | 'achv'>('proj');
 
@@ -22,12 +24,14 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
   const [bodyText, setBodyText] = useState('');
   const [isFolderNameCustom, setIsFolderNameCustom] = useState(false);
 
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingFiles, setExistingFiles] = useState<string[]>([]);
+  const [deletedFiles, setDeletedFiles] = useState<string[]>([]);
+  const [thumbnailFilename, setThumbnailFilename] = useState<string>('');
+
   // File drag & drop states
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  if (!isOpen) return null;
 
   const handleReset = () => {
     setStep(1);
@@ -40,7 +44,10 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     setGithub('');
     setLinkedin('');
     setBodyText('');
-    setSelectedFile(null);
+    setSelectedFiles([]);
+    setExistingFiles([]);
+    setDeletedFiles([]);
+    setThumbnailFilename('');
     setIsDragOver(false);
     setIsFolderNameCustom(false);
   };
@@ -49,6 +56,46 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     handleReset();
     onClose();
   };
+
+  const isEditMode = !!editEntry;
+
+  useEffect(() => {
+    if (isOpen && editEntry) {
+      setStep(2); // Skip category selection, go directly to form
+      setCategory(editEntry.source);
+      
+      // Get folderName from folderPath (last portion of path)
+      const parts = editEntry.folderPath.replace(/\\/g, '/').split('/');
+      const name = parts[parts.length - 1] || '';
+      setFolderName(name);
+      
+      setTitle(editEntry.title || '');
+      setDateStart(editEntry.datestart || '');
+      setDateEnd(editEntry.dateend || '');
+      setSkill(editEntry.skill || '');
+      setGithub(editEntry.github || '');
+      setLinkedin(editEntry.linkedin || '');
+      setBodyText(editEntry.body || '');
+      
+      setIsFolderNameCustom(true);
+      
+      // Populate attachments
+      const attachments = editEntry.attachments || [];
+      setExistingFiles(attachments);
+      setDeletedFiles([]);
+      
+      // Extract thumbnail if present (from imgPath filename component)
+      if (editEntry.imgPath) {
+        const imgParts = editEntry.imgPath.split('/');
+        const thumbName = imgParts[imgParts.length - 1] || '';
+        setThumbnailFilename(thumbName);
+      } else {
+        setThumbnailFilename('');
+      }
+    } else if (isOpen && !editEntry) {
+      handleReset();
+    }
+  }, [isOpen, editEntry]);
 
   const handleSelectCategory = (cat: 'proj' | 'cert' | 'item' | 'achv') => {
     setCategory(cat);
@@ -102,14 +149,18 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      await processFile(files[0]);
+      for (let i = 0; i < files.length; i++) {
+        await processFile(files[i]);
+      }
     }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      await processFile(files[0]);
+      for (let i = 0; i < files.length; i++) {
+        await processFile(files[i]);
+      }
     }
   };
 
@@ -131,7 +182,14 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
       setFolderName(baseName);
       setIsFolderNameCustom(true);
     } else if (['png', 'jpg', 'jpeg', 'pdf'].includes(extension || '')) {
-      setSelectedFile(file);
+      setSelectedFiles(prev => {
+        if (prev.some(f => f.name === file.name)) return prev;
+        return [...prev, file];
+      });
+      // Auto-set the first image or PDF as thumbnail if none chosen
+      if (!thumbnailFilename && ['png', 'jpg', 'jpeg', 'pdf'].includes(extension || '')) {
+        setThumbnailFilename(file.name);
+      }
     } else {
       alert('Only .png, .jpg, .jpeg, .pdf, or .md files are supported!');
     }
@@ -171,8 +229,20 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
     formData.append('category', category);
     formData.append('folderName', folderName.trim());
     formData.append('content', frontmatter);
-    if (selectedFile) {
-      formData.append('file', selectedFile);
+    
+    // Add all uploaded files
+    selectedFiles.forEach(file => {
+      formData.append('files', file);
+    });
+
+    // Add list of files to delete
+    deletedFiles.forEach(df => {
+      formData.append('deleteFiles', df);
+    });
+
+    // Add main thumbnail choice
+    if (thumbnailFilename) {
+      formData.append('thumbnailFilename', thumbnailFilename);
     }
 
     try {
@@ -190,6 +260,8 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
       alert(`Network error: ${err}`);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
@@ -299,20 +371,26 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                 </button>
                 <div>
                   <h2 className="text-sm font-black text-slate-100 uppercase tracking-widest font-dota flex items-center gap-1.5">
-                    <span>Create {category === 'proj' ? 'Project' : category === 'cert' ? 'Certification' : category === 'item' ? 'Item' : 'Achievement'}</span>
+                    <span>{isEditMode ? 'Edit' : 'Create'} {category === 'proj' ? 'Project' : category === 'cert' ? 'Certification' : category === 'item' ? 'Item' : 'Achievement'}</span>
                   </h2>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Target Dir:</span>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value as 'proj' | 'cert' | 'item' | 'achv')}
-                      className="px-1 py-0.5 bg-slate-900 border border-slate-800 rounded text-[9px] text-cyan-400 focus:outline-none focus:border-cyan-500/50 font-mono font-bold cursor-pointer"
-                    >
-                      <option value="proj">data/proj/</option>
-                      <option value="cert">data/cert/</option>
-                      <option value="item">data/item/</option>
-                      <option value="achv">data/achv/</option>
-                    </select>
+                    {isEditMode ? (
+                      <span className="text-[10px] text-cyan-400 font-mono font-bold px-1 py-0.5 bg-slate-950/40 rounded border border-slate-800/40">
+                        data/{category}/{folderName}
+                      </span>
+                    ) : (
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value as 'proj' | 'cert' | 'item' | 'achv')}
+                        className="px-1 py-0.5 bg-slate-900 border border-slate-800 rounded text-[9px] text-cyan-400 focus:outline-none focus:border-cyan-500/50 font-mono font-bold cursor-pointer"
+                      >
+                        <option value="proj">data/proj/</option>
+                        <option value="cert">data/cert/</option>
+                        <option value="item">data/item/</option>
+                        <option value="achv">data/achv/</option>
+                      </select>
+                    )}
                   </div>
                 </div>
               </div>
@@ -347,6 +425,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                   onChange={handleFileSelect}
                   className="hidden"
                   accept=".png,.jpg,.jpeg,.pdf,.md"
+                  multiple
                 />
                 <Upload className="text-slate-400 mb-1 animate-bounce" style={{ animationDuration: '3s' }} size={20} />
                 <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">
@@ -355,22 +434,105 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({ isOpen, onCl
                 <span className="text-[9px] text-slate-500 mt-0.5">
                   Accepts <code className="text-slate-400">.md</code> (to load text/frontmatter) or <code className="text-slate-400">.png, .jpg, .pdf</code> (as attachments)
                 </span>
-                {selectedFile && (
-                  <div className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-cyan-950/50 border border-cyan-800/30 rounded text-[9px] text-cyan-400 font-mono">
-                    <FileText size={12} />
-                    <span>Uploaded: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedFile(null);
-                      }}
-                      className="text-red-500 hover:text-red-400 font-bold ml-1"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
               </div>
+
+              {/* Attachment List */}
+              {((existingFiles.filter(f => !deletedFiles.includes(f)).length > 0) || selectedFiles.length > 0) && (
+                <div className="flex flex-col gap-2 p-3 bg-[#111418] border border-slate-800 rounded-lg text-xs font-semibold select-none">
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider">Attachments List</span>
+                  <div className="flex flex-col gap-1.5 max-h-[150px] overflow-y-auto pr-1">
+                    
+                    {/* Existing Files */}
+                    {existingFiles
+                      .filter(f => !deletedFiles.includes(f))
+                      .map(filename => {
+                        const isMainable = /\.(png|jpg|jpeg|pdf)$/i.test(filename);
+                        const isMain = filename === thumbnailFilename;
+                        return (
+                          <div key={`existing-${filename}`} className="flex items-center justify-between py-1 px-2 bg-slate-900 border border-slate-800/60 rounded font-sans">
+                            <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                              <FileText size={14} className="text-cyan-400 shrink-0" />
+                              <span className="font-mono text-[11px] text-slate-300 truncate" title={filename}>
+                                {filename}
+                              </span>
+                              {isMain && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-450 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                                  Thumbnail
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-3 shrink-0 ml-4">
+                              {isMainable && !isMain && (
+                                <button
+                                  type="button"
+                                  onClick={() => setThumbnailFilename(filename)}
+                                  className="text-cyan-400 hover:text-cyan-300 text-[10px] uppercase font-bold hover:underline"
+                                >
+                                  Set Main
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeletedFiles(prev => [...prev, filename]);
+                                  if (isMain) setThumbnailFilename('');
+                                }}
+                                className="text-red-500 hover:text-red-400 text-[10px] uppercase font-bold hover:underline"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                    {/* New Uploaded Files */}
+                    {selectedFiles.map((file, idx) => {
+                      const isMainable = /\.(png|jpg|jpeg|pdf)$/i.test(file.name);
+                      const isMain = file.name === thumbnailFilename;
+                      return (
+                        <div key={`new-${file.name}-${idx}`} className="flex items-center justify-between py-1 px-2 bg-cyan-950/20 border border-cyan-900/30 rounded font-sans">
+                          <div className="flex items-center gap-2 truncate flex-1 min-w-0 font-sans">
+                            <FileText size={14} className="text-emerald-400 shrink-0 font-sans" />
+                            <span className="font-mono text-[11px] text-slate-200 truncate" title={file.name}>
+                              {file.name} <span className="text-slate-500 font-sans font-medium text-[9px]">({(file.size / 1024).toFixed(1)} KB)</span>
+                            </span>
+                            {isMain && (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider shrink-0 font-sans">
+                                Thumbnail
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-3 shrink-0 ml-4 font-sans">
+                            {isMainable && !isMain && (
+                              <button
+                                type="button"
+                                onClick={() => setThumbnailFilename(file.name)}
+                                className="text-cyan-450 hover:text-cyan-350 text-[10px] uppercase font-bold hover:underline"
+                              >
+                                Set Main
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedFiles(prev => prev.filter(f => f.name !== file.name));
+                                if (isMain) setThumbnailFilename('');
+                              }}
+                              className="text-red-500 hover:text-red-400 text-[10px] uppercase font-bold hover:underline"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  </div>
+                </div>
+              )}
 
               {/* Form Metadata Fields */}
               <div className="grid grid-cols-2 gap-3.5 text-xs font-semibold">

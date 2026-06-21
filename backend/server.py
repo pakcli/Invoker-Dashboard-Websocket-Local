@@ -201,18 +201,71 @@ def create_entry():
     except Exception as e:
         return jsonify({"error": f"Failed to save index.md: {str(e)}"}), 500
 
-    # Save uploaded file if any
-    uploaded_file = request.files.get('file')
-    if uploaded_file and uploaded_file.filename:
-        filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '', uploaded_file.filename)
-        if filename:
-            ext = os.path.splitext(filename)[1].lower()
+    # 1. Delete requested files
+    delete_files = request.form.getlist('deleteFiles')
+    if os.path.exists(target_dir):
+        for df in delete_files:
+            df_sanitized = re.sub(r'[^a-zA-Z0-9_\-\.]', '', df)
+            if df_sanitized and df_sanitized != "index.md":
+                file_path = os.path.join(target_dir, df_sanitized)
+                if os.path.isfile(file_path):
+                    try:
+                        os.remove(file_path)
+                    except Exception as e:
+                        print(f"Error deleting file {df_sanitized}: {e}")
+
+    # 2. Get main thumbnail choice
+    thumbnail_filename = request.form.get('thumbnailFilename')  # original filename of the chosen thumbnail
+
+    # 3. Handle multiple uploaded files
+    uploaded_files = request.files.getlist('files')
+    for f in uploaded_files:
+        if f and f.filename:
+            orig_filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '', f.filename)
+            if not orig_filename or orig_filename == "index.md":
+                continue
+            ext = os.path.splitext(orig_filename)[1].lower()
             if ext in ['.png', '.jpg', '.jpeg', '.pdf']:
-                file_path = os.path.join(target_dir, filename)
+                # Determine target filename: if this file was selected as main thumbnail
+                if orig_filename == thumbnail_filename:
+                    save_name = f"thumbnail{ext}"
+                    # First delete any existing thumbnail files to prevent duplicates
+                    for name in ["thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"]:
+                        tp = os.path.join(target_dir, name)
+                        if os.path.isfile(tp):
+                            try:
+                                os.remove(tp)
+                            except:
+                                pass
+                else:
+                    save_name = orig_filename
+                
+                file_path = os.path.join(target_dir, save_name)
                 try:
-                    uploaded_file.save(file_path)
+                    f.save(file_path)
                 except Exception as e:
-                    return jsonify({"error": f"Failed to save uploaded file: {str(e)}"}), 500
+                    return jsonify({"error": f"Failed to save file {orig_filename}: {str(e)}"}), 500
+
+    # 4. Handle setting an existing file as main thumbnail
+    if thumbnail_filename and os.path.exists(target_dir) and not any(f.filename == thumbnail_filename for f in uploaded_files):
+        existing_sanitized = re.sub(r'[^a-zA-Z0-9_\-\.]', '', thumbnail_filename)
+        ext = os.path.splitext(existing_sanitized)[1].lower()
+        if ext in ['.png', '.jpg', '.jpeg', '.pdf']:
+            old_path = os.path.join(target_dir, existing_sanitized)
+            new_path = os.path.join(target_dir, f"thumbnail{ext}")
+            if os.path.isfile(old_path) and existing_sanitized != f"thumbnail{ext}":
+                # First delete any existing thumbnail files to prevent duplicates
+                for name in ["thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"]:
+                    tp = os.path.join(target_dir, name)
+                    if os.path.isfile(tp):
+                        try:
+                            os.remove(tp)
+                        except:
+                            pass
+                try:
+                    os.rename(old_path, new_path)
+                except Exception as e:
+                    print(f"Error renaming {existing_sanitized} to thumbnail{ext}: {e}")
 
     # Run scan to update database and broadcast WebSocket event
     try:

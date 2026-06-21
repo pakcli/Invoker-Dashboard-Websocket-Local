@@ -76,18 +76,24 @@ def scan_directory(watch_dir):
                 img_name = ""
                 if os.path.exists(entry_path):
                     for filename in os.listdir(entry_path):
-                        if filename.lower() in ["img.png", "img.jpg", "img.jpeg", "thumbnail.png", "thumbnail.jpg"]:
+                        if filename.lower() in ["img.png", "img.jpg", "img.jpeg", "img.pdf", "thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"]:
                             img_name = filename
                             break
                     if not img_name:
                         for filename in os.listdir(entry_path):
-                            if filename.lower().endswith((".png", ".jpg", ".jpeg")):
+                            if filename.lower().endswith((".png", ".jpg", ".jpeg", ".pdf")):
                                 img_name = filename
                                 break
                             
                 img_path = f"/api/media/{category}/{entry_name}/{img_name}" if img_name else ""
                 
                 folder_path = os.path.abspath(entry_path)
+                
+                attachments = []
+                if os.path.exists(entry_path):
+                    for filename in os.listdir(entry_path):
+                        if filename != "index.md":
+                            attachments.append(filename)
                 
                 data.append({
                     "id": f"{category}_{entry_name}",
@@ -100,6 +106,7 @@ def scan_directory(watch_dir):
                     "linkedin": linkedin,
                     "folderPath": folder_path,
                     "imgPath": img_path,
+                    "attachments": attachments,
                     "body": post.content
                 })
                 
