@@ -1,68 +1,70 @@
-# Invoker Portfolio Dashboard 🔮
+# 🎮 Workspace Portfolio Dashboard
 
-A premium, interactive developer portfolio dashboard themed around Dota 2's Invoker hero. This application functions as a local, real-time indexer for your work history, certifications, side projects, and hardware setups.
+A premium, interactive developer portfolio dashboard and local workspace indexer designed for developers, sysadmins, and IT tech wizards who love competitive gaming. 
 
-It recursively watches a directory of markdown files, compiles their YAML frontmatter metadata, dynamically synthesizes custom game-like chimes using the **Web Audio API**, and uses a WebSocket pipeline to instantly hot-reload the layout whenever you add, modify, or delete files.
+This repository allows you to document and manage your work history, certifications (*"serts"*), side projects, achievements, and hardware setups. It watches your local directories in real-time, compiles YAML frontmatter, synthesizes custom interface feedback tones using the **Web Audio API**, and uses WebSockets to hot-reload your viewport instantly.
 
----
-
-## 🚀 Key Features
-
-* **Invoker Magic HUD**:
-  * Keyboard hotkey binding (**Q: Quas**, **W: Wex**, **E: Exort**, **R: Invoke**, and **Space: Clear**).
-  * Web Audio API synthesizer generating real-time magical chime sweeps, chimes, and ticks with randomized pitch shifts (+-2%).
-  * Reactive dashboard statistics showing active card counts filtered in real-time.
-  * Active Orb combination search filters: queue 3 elements and hit Invoke (R) to instantly isolate matching content.
-* **Auto-Scanning Watcher**:
-  * Watches local directories in real-time using Python `watchdog`.
-  * Automatically compiles YAML frontmatter from `index.md` files into a unified dataset.
-  * Dynamically generates customizable image thumbnails for your items.
-* **Chronological Timeline Feed**:
-  * Groups projects, awards, and hardware configurations chronologically.
-  * **Aspect-locked 4:3 cards** with a maximum width of `512px` that dynamically auto-wrap to accommodate wide screens or browser zoom-out levels.
-  * Support for markdown rendering (`react-markdown`) in detail modals.
-* **Local Ingress Controls**:
-  * Safe local directory traversal guard preventing path traversal attacks.
-  * Secure HTTPS support out-of-the-box via dynamic self-signed certificate generation on startup.
+Choose your hero alignment below:
 
 ---
 
-## 🛠️ Stack & Architecture
+## 🔵🟣🟠 1. Invoker's Spellbook (For DOTA 2 Players)
 
-| Layer | Technology | Description |
-|---|---|---|
-| **Frontend** | React, TypeScript, Tailwind CSS, Vite | Fast SPA, Lucide icons, dynamic Web Audio synth |
-| **Backend** | Python Flask, flask-sock, watchdog | WebSocket communication, file crawler, folder open service |
-| **Data Format** | Markdown (`index.md`) + YAML frontmatter | Easy, text-based cataloging |
-| **Transport** | HTTPS & WSS (WebSocket Secure) | Local SSL generation |
+> *"A mind structured and precise... I invoke the catalog of my legacy!"*
+
+If you are a Dota 2 player, you will feel right at home with the default HUD configuration. Map your portfolio's frontmatter attributes to spell components and summon your items into view:
+
+* **Quas, Wex, and Exort Orbs**:
+  * Keyboard hotkeys: Queue elements using **Q (Quas - Blue)**, **W (Wex - Purple)**, and **E (Exort - Gold)**.
+  * Press **R (Invoke)** to execute the active combination and instantly query matching cards.
+  * Press **Space (Clear)** to empty your active orb queue.
+* **Dynamic Underline Gradients**: Underline borders on cards are computed dynamically based on the proportion and sequence of letters in the `skill` frontmatter field (e.g. `www` = solid Wex purple, `qwe` = equal Quas/Wex/Exort gradient). Omit the field to default to a clean neutral grey.
+* **Synthesized Spell Chimes**: Uses the Web Audio API to play real-time magical chime sweeps and clicks corresponding to your orb queues and spell invocation.
+
+---
+
+## 🌙 2. Code of the Moon Elf (For MLBB Players)
+
+> *"The Code of the Moon Elf dictates my workspace... heal and index!"*
+
+For Mobile Legends: Bang Bang (MLBB) players, the dashboard serves as a support HUD themed after the Moon Elf King, **Estes**. Use the scrolls of scriptures and moonlight domains to manage your portfolio nodes:
+
+* **Scripture of the Moon Elf (Automatic Sync)**:
+  * The background scan engine watches your data directory continuously. Changes dynamically charge the dashboard, updating statistics instantly.
+* **Moonlight Immersion (Host Ingress Linking)**:
+  * Click to link the web interface to your host operating system. The server securely spawns the default file browser to target files, maintaining absolute path-traversal safety boundaries.
+* **Domain of Moon Goddess (Tri-Attribute Query Circles)**:
+  * Use the circular HUD filters (`Q`, `W`, and `E` keys) to cast a domain slowing/restricting filter across the grid, narrowing down cards dynamically.
+* **Blessing of Moon Goddess (WebSocket Hot-Reload)**:
+  * Constant synchronization! An event is broadcast over a WebSocket stream (`wss://`) to heal all open client tabs, refreshing components in memory without page reloads.
 
 ---
 
 ## 📂 Data Directory Structure
 
-Configure the watched folder (defaulting to the local `./data` directory or a custom path defined in `.env`) as follows:
+Configure the watched folder (defaulting to `./data` or custom path defined in `.env`) as follows:
 
 ```
 watched_directory/
-├── proj/              # Renders as Project Cards
+├── proj/              # Projects (Renders as Project Cards)
 │   └── 260601_project-slug/
 │       ├── index.md
 │       └── img.png    (Optional thumbnail)
-├── cert/              # Renders as Certification Cards (Badge frame style)
+├── cert/              # Certifications (Renders as Certification Cards - Badge frame style)
 │   └── 260613_cert-slug/
 │       ├── index.md
 │       └── img.png
-├── item/              # Renders as Workstation/Hardware Cards (Clean style)
+├── item/              # Workstation & Hardware (Renders as Workstation Cards - Clean style)
 │   └── 260115_item-slug/
 │       ├── index.md
 │       └── img.png
-└── achv/              # Renders as Achievement Cards (Golden glowing border)
+└── achv/              # Achievements (Renders as Achievement Cards - Golden glowing border)
     └── 260510_award-slug/
         ├── index.md
         └── img.png
 ```
 
-### index.md YAML Frontmatter
+### index.md Frontmatter Runes (Schema)
 
 Create an `index.md` inside your directory structure with the following properties:
 
@@ -71,71 +73,48 @@ Create an `index.md` inside your directory structure with the following properti
 title: Chaos Meteor WebGL Renderer
 datestart: 2026-06-15
 dateend: 2026-06-21           # Optional, omit or leave empty for "Present"
-skill: eew                     # Optional (3-letter Quas/Wex/Exort combination)
+skill: eew                     # Optional (3-letter combination of q, w, e)
 github: https://github.com/... # Optional
 ---
 
-Your markdown details body here. This will display inside the "[📄 More]" details modal.
+Your markdown details body here. This will display inside the details modal.
 ```
-
-> [!NOTE]
-> **Dynamic Underline Gradients**: Underline gradients on cards are computed dynamically based on the proportion and sequence of letters in the `skill` frontmatter field (e.g. `www` = solid Wex purple, `qwe` = equal Quas/Wex/Exort gradient). Omit the field to default to a clean neutral grey.
 
 ---
 
-## 💻 Quick Start Setup
+## ⚔️ Setup & Installation
 
 ### 1. Prerequisites
-Ensure you have the following installed on your system:
 * **Python** (version 3.8+)
 * **Node.js** (version 16+)
 
-### 2. Configure Environment Variables
+### 2. Configuration
 Copy `.env.example` to `.env` in the root folder:
 ```bash
 cp .env.example .env
 ```
-Open `.env` and set `PORTFOLIO_WATCH_DIR` to the folder containing your portfolio markdown data (or leave empty to default to the local `./data` directory).
+Open `.env` and set `PORTFOLIO_WATCH_DIR` to the folder containing your portfolio markdown data.
 
 ### 3. Run the Application
 #### Windows
-Simply double-click or run:
+Run the boot script:
 ```cmd
 start.bat
 ```
-*This script will create a Python virtual environment, install dependencies, compile the frontend, generate localhost SSL certificates, seed mock records (if the folder is empty), and boot the secure Flask server.*
 
 #### macOS / Linux
-Run the following commands in your shell:
+Run the commands in your shell:
 ```bash
-# 1. Create and activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 2. Install backend dependencies
 pip install -r backend/requirements.txt
 
-# 3. Compile frontend build assets
 cd frontend
 npm install
 npm run build
 cd ..
 
-# 4. Start the secure Flask server
 python3 backend/server.py
 ```
 
-Open **`https://localhost:5000`** in your browser. (Since a self-signed certificate is generated for localhost development, accept the browser warning on your first visit).
-
----
-
-## 🧪 Development Mode
-
-If you'd like to make frontend changes with Hot Module Replacement (HMR) enabled:
-1. Run the backend server (`python backend/server.py`) to handle the scan engine, WebSockets, and media server.
-2. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-3. Open `https://localhost:5173`. The Vite server will proxy API and WebSocket connections automatically to the Flask backend running on port `5000`.
+Open **`https://localhost:5000`** in your browser. Accept the localhost self-signed certificate warning on your first visit.
