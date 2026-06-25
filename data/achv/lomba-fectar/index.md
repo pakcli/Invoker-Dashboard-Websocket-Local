@@ -1,6 +1,6 @@
 ---
 datestart: 2024-09-10
-done: false
+done: true
 skill: eew
 title: Lomba Fectar Juara 1
 ---

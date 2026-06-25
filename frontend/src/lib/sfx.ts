@@ -1,3 +1,10 @@
+import invokeUrl from '../assets/Invoke.mp3.mpeg';
+import buttonClickUrl from '../assets/Ui_buttonclickrelease.mp3.mpeg';
+import readyCheckFailUrl from '../assets/Ui_ready_check_fail.mp3.mpeg';
+import readyCheckYesUrl from '../assets/Ui_ready_check_yes.mp3.mpeg';
+import treasureUrl from '../assets/Ui_treasure_01.mp3.mpeg';
+import gameReadyUrl from '../assets/dota-2-game-ready-sound-youtube1.mp3';
+
 class SoundManager {
   private ctx: AudioContext | null = null;
   private enabled = true;
@@ -111,23 +118,63 @@ class SoundManager {
   }
 
   playTick() {
-    this.playBuffer('orb_click', '/assets/Ui_buttonclickrelease.mp3.mpeg', 0.4);
+    this.playBuffer('orb_click', buttonClickUrl, 0.4);
   }
 
   playQuas() {
-    this.playBuffer('orb_click', '/assets/Ui_buttonclickrelease.mp3.mpeg', 0.8);
+    this.playBuffer('orb_click', buttonClickUrl, 0.8);
   }
 
   playWex() {
-    this.playBuffer('orb_click', '/assets/Ui_buttonclickrelease.mp3.mpeg', 0.8);
+    this.playBuffer('orb_click', buttonClickUrl, 0.8);
   }
 
   playExort() {
-    this.playBuffer('orb_click', '/assets/Ui_buttonclickrelease.mp3.mpeg', 0.8);
+    this.playBuffer('orb_click', buttonClickUrl, 0.8);
   }
 
   playInvoke() {
-    this.playBuffer('invoke', '/assets/Invoke.mp3.mpeg', 0.8, true);
+    this.playBuffer('invoke', invokeUrl, 0.8, true);
+  }
+
+  playGameReady() {
+    if (!this.enabled) return;
+    try {
+      const audio = new Audio(gameReadyUrl);
+      this.init();
+      if (this.ctx) {
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        const source = this.ctx.createMediaElementSource(audio);
+        const gainNode = this.ctx.createGain();
+        
+        // Boost the volume of this specific sound by 2.5x
+        gainNode.gain.setValueAtTime(2.5 * this.volume, this.ctx.currentTime);
+        
+        source.connect(gainNode);
+        gainNode.connect(this.ctx.destination);
+      } else {
+        audio.volume = this.volume;
+      }
+      audio.play().catch(err => {
+        console.error("Failed to play game ready audio:", err);
+      });
+    } catch (e) {
+      console.error("Error playing game ready audio:", e);
+    }
+  }
+
+  playDone() {
+    this.playBuffer('ready_check_yes', readyCheckYesUrl, 0.8);
+  }
+
+  playFail() {
+    this.playBuffer('ready_check_fail', readyCheckFailUrl, 0.85);
+  }
+
+  playTreasure() {
+    this.playBuffer('treasure', treasureUrl, 0.85);
   }
 }
 

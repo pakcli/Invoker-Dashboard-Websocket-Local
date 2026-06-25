@@ -30,6 +30,10 @@ interface HUDProps {
   setReadViewMode: (mode: 'popup' | 'split') => void;
   clickToEdit: boolean;
   setClickToEdit: (val: boolean) => void;
+  matchReadySimEnabled: boolean;
+  setMatchReadySimEnabled: (val: boolean) => void;
+  dreamingShowAll: boolean;
+  setDreamingShowAll: (val: boolean) => void;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -60,6 +64,10 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setReadViewMode,
   clickToEdit,
   setClickToEdit,
+  matchReadySimEnabled,
+  setMatchReadySimEnabled,
+  dreamingShowAll,
+  setDreamingShowAll,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
 
@@ -616,6 +624,66 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             }`}
           >
             Direct Edit
+          </button>
+        </div>
+      </div>
+
+      {/* Match Ready Simulation Toggle */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Match Ready Anim</span>
+          <span className="text-slate-400 font-bold capitalize">{matchReadySimEnabled ? 'Enabled' : 'Disabled'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setMatchReadySimEnabled(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !matchReadySimEnabled
+                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Disabled
+          </button>
+          <button
+            onClick={() => setMatchReadySimEnabled(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              matchReadySimEnabled
+                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Enabled
+          </button>
+        </div>
+      </div>
+
+      {/* Planning Default Toggle (Show All | Undone) */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Planning Default</span>
+          <span className="text-slate-400 font-bold capitalize">{dreamingShowAll ? 'Show All' : 'Undone Only'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setDreamingShowAll(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !dreamingShowAll
+                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Undone Only
+          </button>
+          <button
+            onClick={() => setDreamingShowAll(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              dreamingShowAll
+                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Show All
           </button>
         </div>
       </div>

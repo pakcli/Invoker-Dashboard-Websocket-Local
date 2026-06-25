@@ -40,6 +40,21 @@ For Mobile Legends: Bang Bang (MLBB) players, the dashboard serves as a support 
 
 ---
 
+## 🔮 3. Tegak Lurus Planning (Planning Vision)
+
+> *"The path ahead is clear. We follow the linear roadmap of the future."*
+
+The **Tegak Lurus Planning** dashboard (triggered by clicking **🔮 Start Game**) isolates your future roadmap of goals, side projects, and certifications starting from today onwards:
+
+* **Dota-Style Match Ready Sequence**: Initiates a Dota-inspired matchmaking pop-up. Pressing **ACCEPT** fires chimes and triggers the temporal vision layout.
+* **3D Card-Flip Reveal**: Cards start face-down as "Pending Visions" (dark glyphs with neon scanning grids) and sequentially flip open. The reveal delay is calculated linearly based on how far in the future the project starts (500ms per year from today).
+* **Chronological Year Sections**: Cards are grouped dynamically by year (e.g. `2026`, `2027`) separated by glowing, sleek emerald-gradient headers.
+* **Status Synchronization**: Toggle between showing only **Undone** tasks or **Show All** using the settings pill-toggle (synced persistently to the HUD sidebar).
+* **Seamless Status Edits**: The edit panel reads card status dynamically (supporting frontend `checkedCards` overrides). Checking or unchecking the done status in either the timeline grid or the edit panel immediately propagates state changes across the UI and persists the update to the markdown file on disk.
+* **Tactile Audio Feedback**: Completing normal items plays a *Ready Check Yes* chime (`sfx.playDone()`), while completing achievements (`achv` category) plays a premium *Dota 2 Treasure Open* sfx (`sfx.playTreasure()`).
+
+---
+
 ## 📂 Data Directory Structure
 
 Configure the watched folder (defaulting to `./data` or custom path defined in `.env`) as follows:

@@ -22,6 +22,56 @@ const getDependencyColor = (dep: PortfolioEntry) => {
   return '#64748b'; // Default Slate
 };
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return 'Undated';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    if (monthIndex >= 0 && monthIndex < 12) {
+      return `${day} ${months[monthIndex]} ${year}`;
+    }
+  }
+  return dateStr;
+};
+
+const FlippableCard: React.FC<{
+  isRevealed: boolean;
+  thinnerCard: boolean;
+  children: React.ReactNode;
+}> = ({ isRevealed, thinnerCard, children }) => {
+  return (
+    <div className={`perspective-1000 w-full max-w-[512px] ${thinnerCard ? 'min-h-[105px] h-[105px]' : 'aspect-[4/3]'} relative`}>
+      <div className={`w-full h-full preserve-3d transition-transform duration-700 relative ${isRevealed ? 'rotate-y-0' : 'rotate-y-180'}`}>
+        {/* Front face: the actual portfolio card */}
+        <div className="absolute inset-0 backface-hidden w-full h-full">
+          {children}
+        </div>
+        {/* Back face: plain blank placeholder */}
+        <div className="absolute inset-0 backface-hidden rotate-y-180 w-full h-full">
+          <div className="bg-[#0c0f13] border-2 border-dashed border-emerald-500/20 rounded-lg flex flex-col items-center justify-center p-5 shadow-[0_0_15px_rgba(0,0,0,0.5)] h-full w-full select-none hover:border-emerald-500/40 transition-colors duration-300 relative">
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg pointer-events-none" />
+            <div className="w-12 h-12 rounded-full bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse mb-2">
+              <span className="text-xl">🔮</span>
+            </div>
+            {!thinnerCard && (
+              <>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest font-dota">Temporal Node</span>
+                <span className="text-[9px] text-emerald-500/50 uppercase tracking-wider font-semibold mt-1">Pending Vision</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const App: React.FC = () => {
   const [entries, setEntries] = useState<PortfolioEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,6 +128,18 @@ export const App: React.FC = () => {
   });
   const [editEntry, setEditEntry] = useState<PortfolioEntry | null>(null);
   const [isDreamingOpen, setIsDreamingOpen] = useState(false);
+  const [dreamingShowAll, setDreamingShowAll] = useState<boolean>(() => {
+    const saved = localStorage.getItem('dreamingShowAll');
+    return saved !== null ? saved === 'true' : false;
+  });
+  const [matchReadySimEnabled, setMatchReadySimEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('matchReadySimEnabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isMatchReadyPromptOpen, setIsMatchReadyPromptOpen] = useState(false);
+  const [revealedCardIds, setRevealedCardIds] = useState<Record<string, boolean>>({});
+  const [isDreamingSequenceActive, setIsDreamingSequenceActive] = useState(false);
+  const [isAcceptingMatch, setIsAcceptingMatch] = useState(false);
   const [checkedCards, setCheckedCards] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('checkedCards');
@@ -111,24 +173,34 @@ export const App: React.FC = () => {
   }>({
     isOpen: false,
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const toggleCardChecked = (cardId: string) => {
     const entry = entries.find(e => e.id === cardId);
     const title = entry ? entry.title : 'this instance';
     const isCurrentlyChecked = checkedCards[cardId] !== undefined ? checkedCards[cardId] : (entry?.done || false);
-    
+
     const message = isCurrentlyChecked
       ? `Are you sure you want to mark "${title}" as incomplete?`
       : `Are you sure you want to mark "${title}" as done?`;
-      
+
     setConfirmModal({
       isOpen: true,
       message,
       onConfirm: async () => {
-        if (soundEnabled) sfx.playTick();
         const nextState = !isCurrentlyChecked;
+        if (soundEnabled) {
+          if (nextState) {
+            if (entry?.source === 'achv') {
+              sfx.playTreasure();
+            } else {
+              sfx.playDone();
+            }
+          } else {
+            sfx.playTick();
+          }
+        }
 
         // Optimistically update frontend local state
         setCheckedCards(prev => ({
@@ -189,6 +261,13 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSaveSuccess = (cardId: string, nextDoneState: boolean) => {
+    setCheckedCards(prev => ({
+      ...prev,
+      [cardId]: nextDoneState,
+    }));
+  };
+
   // Save settings and preferences to localStorage on change
   useEffect(() => {
     localStorage.setItem('sidebarPosition', sidebarPosition);
@@ -205,12 +284,14 @@ export const App: React.FC = () => {
     localStorage.setItem('checkedCards', JSON.stringify(checkedCards));
     localStorage.setItem('statsMode', statsMode);
     localStorage.setItem('clickToEdit', String(clickToEdit));
+    localStorage.setItem('matchReadySimEnabled', String(matchReadySimEnabled));
+    localStorage.setItem('dreamingShowAll', String(dreamingShowAll));
     if (activeStatFilter === null) {
       localStorage.removeItem('activeStatFilter');
     } else {
       localStorage.setItem('activeStatFilter', activeStatFilter);
     }
-  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode, clickToEdit]);
+  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode, clickToEdit, matchReadySimEnabled, dreamingShowAll]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -232,7 +313,7 @@ export const App: React.FC = () => {
       const isHttps = window.location.protocol === 'https:';
       const wsProto = isHttps ? 'wss:' : 'ws:';
       const wsUrl = `${wsProto}//${window.location.host}/ws`;
-      
+
       console.log(`[WS] Connecting to ${wsUrl}`);
       ws = new WebSocket(wsUrl);
 
@@ -326,7 +407,7 @@ export const App: React.FC = () => {
   const invokeCombo = () => {
     if (orbs.length < 3) return;
     if (soundEnabled) sfx.playInvoke();
-    
+
     // Create sorted lower-case combination key (e.g. qqw, qwe)
     const combo = orbs.map(o => o.toLowerCase()).sort().join('');
     setActiveCombo(combo);
@@ -337,6 +418,100 @@ export const App: React.FC = () => {
     sfx.toggle(soundEnabled);
     sfx.setVolume(volume);
   }, [soundEnabled, volume]);
+
+  // Helper to extract upcoming entries from today onwards
+  const getUpcomingEntriesList = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    return entries.filter((entry) => {
+      if (!entry.datestart) return false;
+      if (!dreamingShowAll) {
+        const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
+        if (isDone) return false;
+      }
+      return entry.datestart >= todayStr;
+    }).sort((a, b) => a.datestart.localeCompare(b.datestart));
+  };
+
+  const triggerDreamingVision = () => {
+    if (soundEnabled) sfx.playGameReady();
+    if (!matchReadySimEnabled) {
+      setIsDreamingOpen(true);
+    } else {
+      setIsMatchReadyPromptOpen(true);
+    }
+  };
+
+  const handleAcceptMatchReady = () => {
+    if (soundEnabled) sfx.playTick();
+    setIsAcceptingMatch(true);
+    setTimeout(() => {
+      setIsMatchReadyPromptOpen(false);
+      setIsAcceptingMatch(false);
+      setIsDreamingOpen(true);
+      setIsDreamingSequenceActive(true);
+    }, 500); // 0.5s delay
+  };
+
+  const calculateRevealDelay = (entryDate: string) => {
+    const today = new Date();
+    const target = new Date(entryDate);
+    const diffTime = target.getTime() - today.getTime();
+    const diffYears = Math.max(0, diffTime / (1000 * 60 * 60 * 24 * 365.25));
+    return diffYears * 500; // 0.5s (500ms) per year
+  };
+
+  // Effect to handle card reveal delay timers based on future start dates
+  useEffect(() => {
+    let startTimeoutId: any = null;
+    const activeTimers: any[] = [];
+
+    if (isDreamingOpen) {
+      const upcoming = getUpcomingEntriesList();
+
+      if (matchReadySimEnabled && isDreamingSequenceActive && upcoming.length > 0) {
+        setRevealedCardIds({});
+
+        // Initial 0.5s start delay
+        startTimeoutId = setTimeout(() => {
+          upcoming.forEach((entry) => {
+            const delay = calculateRevealDelay(entry.datestart);
+            const timerId = setTimeout(() => {
+              setRevealedCardIds(prev => ({ ...prev, [entry.id]: true }));
+            }, delay);
+            activeTimers.push(timerId);
+          });
+
+          // Disable sequence active state after the last card has flipped
+          const maxDelay = Math.max(...upcoming.map(e => calculateRevealDelay(e.datestart)));
+          const endTimerId = setTimeout(() => {
+            setIsDreamingSequenceActive(false);
+          }, maxDelay + 100);
+          activeTimers.push(endTimerId);
+
+        }, 500); // 0.5s initial delay
+      } else {
+        // If animation disabled or inactive, mark all as revealed immediately
+        const allRevealed: Record<string, boolean> = {};
+        upcoming.forEach(entry => {
+          allRevealed[entry.id] = true;
+        });
+        setRevealedCardIds(allRevealed);
+      }
+    } else {
+      setRevealedCardIds({});
+      setIsDreamingSequenceActive(false);
+    }
+
+    return () => {
+      if (startTimeoutId) clearTimeout(startTimeoutId);
+      activeTimers.forEach(timerId => clearTimeout(timerId));
+    };
+  }, [isDreamingOpen, isDreamingSequenceActive, matchReadySimEnabled, soundEnabled, entries]);
 
   const handleOpenFolder = async (folderPath: string) => {
     if (soundEnabled) sfx.playTick();
@@ -365,7 +540,7 @@ export const App: React.FC = () => {
         return false;
       }
       if (mode === 'items') {
-        const matchesSub = 
+        const matchesSub =
           (entry.source === 'cert' && subFilters.cert) ||
           (entry.source === 'achv' && subFilters.achv) ||
           (entry.source === 'item' && subFilters.item);
@@ -420,25 +595,7 @@ export const App: React.FC = () => {
 
   const filteredEntries = getFilteredEntries();
 
-  const upcomingEntries = (() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
-
-    const maxDate = new Date();
-    maxDate.setFullYear(year + 5);
-    const maxYear = maxDate.getFullYear();
-    const maxMonth = String(maxDate.getMonth() + 1).padStart(2, '0');
-    const maxDay = String(maxDate.getDate()).padStart(2, '0');
-    const maxDateStr = `${maxYear}-${maxMonth}-${maxDay}`;
-
-    return entries.filter((entry) => {
-      if (!entry.datestart) return false;
-      return entry.datestart >= todayStr && entry.datestart <= maxDateStr;
-    }).sort((a, b) => a.datestart.localeCompare(b.datestart));
-  })();
+  const upcomingEntries = getUpcomingEntriesList();
 
   // Compute stats on the items before applying the specific stat override
   const stats: DashboardStats = (() => {
@@ -605,9 +762,8 @@ export const App: React.FC = () => {
       {sidebarCollapsed && (
         <button
           onClick={() => setSidebarCollapsed(false)}
-          className={`fixed top-6 z-40 p-3 rounded-full bg-[#111418] border border-slate-800 hover:border-emerald-500/50 text-emerald-500 hover:text-emerald-400 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] ${
-            sidebarPosition === 'right' ? 'right-6' : 'left-6'
-          }`}
+          className={`fixed top-6 z-40 p-3 rounded-full bg-[#111418] border border-slate-800 hover:border-emerald-500/50 text-emerald-500 hover:text-emerald-400 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] ${sidebarPosition === 'right' ? 'right-6' : 'left-6'
+            }`}
           title="Expand Invoker HUD & Search"
         >
           <Eye size={22} />
@@ -615,9 +771,8 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Content Layout - Full-screen layout */}
-      <main className={`flex-1 min-h-0 w-full px-6 py-6 flex flex-col lg:flex-row gap-8 items-stretch ${
-        sidebarPosition === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'
-      }`}>
+      <main className={`flex-1 min-h-0 w-full px-6 py-6 flex flex-col lg:flex-row gap-8 items-stretch ${sidebarPosition === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'
+        }`}>
         {/* Interactive HUD Sidebar (exactly 240px width, left/right toggleable & collapsible) */}
         {!sidebarCollapsed && (
           <aside className="w-full lg:w-[240px] lg:min-w-[240px] lg:max-w-[240px] shrink-0 flex flex-col gap-5 h-full overflow-y-auto pr-1 scrollbar-thin">
@@ -648,35 +803,39 @@ export const App: React.FC = () => {
             />
 
             {/* Interactive HUD */}
-              <InvokerHUD
-               mode={mode}
-               setMode={setMode}
-               subFilters={subFilters}
-               setSubFilters={setSubFilters}
-               orbs={orbs}
-               onClear={clearOrbs}
-               onInvoke={invokeCombo}
-               activeCombo={activeCombo}
-               stats={stats}
-               soundEnabled={soundEnabled}
-               setSoundEnabled={setSoundEnabled}
-               volume={volume}
-               setVolume={setVolume}
-               activeStatFilter={activeStatFilter}
-               setActiveStatFilter={setActiveStatFilter}
-               formalMode={formalMode}
-               setFormalMode={setFormalMode}
-               thinnerCard={thinnerCard}
-               setThinnerCard={setThinnerCard}
-               statsMode={statsMode}
-               setStatsMode={setStatsMode}
-               nodeLineMode={nodeLineMode}
-               setNodeLineMode={(m) => { setNodeLineMode(m); localStorage.setItem('nodeLineMode', m); }}
-               readViewMode={readViewMode}
-               setReadViewMode={(m) => { setReadViewMode(m); localStorage.setItem('readViewMode', m); }}
-               clickToEdit={clickToEdit}
-               setClickToEdit={setClickToEdit}
-             />
+            <InvokerHUD
+              mode={mode}
+              setMode={setMode}
+              subFilters={subFilters}
+              setSubFilters={setSubFilters}
+              orbs={orbs}
+              onClear={clearOrbs}
+              onInvoke={invokeCombo}
+              activeCombo={activeCombo}
+              stats={stats}
+              soundEnabled={soundEnabled}
+              setSoundEnabled={setSoundEnabled}
+              volume={volume}
+              setVolume={setVolume}
+              activeStatFilter={activeStatFilter}
+              setActiveStatFilter={setActiveStatFilter}
+              formalMode={formalMode}
+              setFormalMode={setFormalMode}
+              thinnerCard={thinnerCard}
+              setThinnerCard={setThinnerCard}
+              statsMode={statsMode}
+              setStatsMode={setStatsMode}
+              nodeLineMode={nodeLineMode}
+              setNodeLineMode={(m) => { setNodeLineMode(m); localStorage.setItem('nodeLineMode', m); }}
+              readViewMode={readViewMode}
+              setReadViewMode={(m) => { setReadViewMode(m); localStorage.setItem('readViewMode', m); }}
+              clickToEdit={clickToEdit}
+              setClickToEdit={setClickToEdit}
+              matchReadySimEnabled={matchReadySimEnabled}
+              setMatchReadySimEnabled={setMatchReadySimEnabled}
+              dreamingShowAll={dreamingShowAll}
+              setDreamingShowAll={setDreamingShowAll}
+            />
           </aside>
         )}
 
@@ -685,7 +844,7 @@ export const App: React.FC = () => {
           <div className="bg-[#0b0d10]/95 border-b border-slate-900/60 py-4 mb-4 flex items-center justify-between gap-4 shrink-0">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-sm font-black dark:text-slate-400 text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <span>{isDreamingOpen && readViewMode === 'split' ? 'Dreaming Oracle: 5 Years Soon' : 'Archives Timeline Feed'}</span>
+                <span>{isDreamingOpen && readViewMode === 'split' ? 'Tegak Lurus Planning' : 'Archives Timeline Feed'}</span>
                 {activeCombo && !isDreamingOpen && (
                   <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
                     Active Filter: {getComboDisplayName(activeCombo)}
@@ -696,7 +855,7 @@ export const App: React.FC = () => {
                 Showing {isDreamingOpen && readViewMode === 'split' ? upcomingEntries.length : filteredEntries.length} entries
               </span>
             </div>
-            
+
             {isDreamingOpen && readViewMode === 'split' ? (
               <button
                 onClick={() => {
@@ -709,15 +868,12 @@ export const App: React.FC = () => {
               </button>
             ) : (
               <button
-                onClick={() => {
-                  if (soundEnabled) sfx.playInvoke();
-                  setIsDreamingOpen(true);
-                }}
+                onClick={triggerDreamingVision}
                 className="relative overflow-hidden px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-950/75 to-teal-950/75 hover:from-emerald-900 hover:to-teal-900 border border-emerald-500/30 text-emerald-250 hover:text-white transition-all text-xs font-black tracking-wider uppercase flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] group shrink-0"
               >
                 <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)]" />
                 <span className="relative z-10 flex items-center gap-1.5 font-dota">
-                  🔮 Dreaming (5 Years Soon)
+                  🔮 Start Game
                 </span>
               </button>
             )}
@@ -731,7 +887,7 @@ export const App: React.FC = () => {
                 <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-emerald-900/30 rounded-xl bg-emerald-950/5 backdrop-blur-sm h-64 select-none">
                   <span className="text-3xl mb-3">🔮</span>
                   <p className="text-sm text-emerald-300 font-semibold font-dota">
-                    No future timeline entries in the next 5 years.
+                    No future timeline entries detected from today onwards.
                   </p>
                   <p className="text-xs text-emerald-400/50 mt-1 max-w-xs font-sans">
                     Click below to add a project or certification with a future start date.
@@ -781,6 +937,8 @@ export const App: React.FC = () => {
                     filteredEntries={filteredEntries}
                     onNavigateToEntry={(entry) => navigateToEntry(entry, 'prev-next')}
                     onDuplicate={handleDuplicateEntry}
+                    checkedCards={checkedCards}
+                    onSaveSuccess={handleSaveSuccess}
                   />
                 </div>
               ) : (() => {
@@ -818,11 +976,10 @@ export const App: React.FC = () => {
                           <button
                             disabled={historyIndex <= 0}
                             onClick={handleHistoryBack}
-                            className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
-                              historyIndex > 0
+                            className={`p-1.5 rounded transition-all duration-200 border border-transparent ${historyIndex > 0
                                 ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
                                 : 'text-slate-700 cursor-not-allowed'
-                            }`}
+                              }`}
                             title="Go Back (History)"
                           >
                             <ArrowLeft size={14} />
@@ -830,11 +987,10 @@ export const App: React.FC = () => {
                           <button
                             disabled={historyIndex >= history.length - 1}
                             onClick={handleHistoryForward}
-                            className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
-                              historyIndex < history.length - 1
+                            className={`p-1.5 rounded transition-all duration-200 border border-transparent ${historyIndex < history.length - 1
                                 ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
                                 : 'text-slate-700 cursor-not-allowed'
-                            }`}
+                              }`}
                             title="Go Forward (History)"
                           >
                             <ArrowRight size={14} />
@@ -967,342 +1123,340 @@ export const App: React.FC = () => {
         const hasPrev = currentIdx > 0;
         const hasNext = currentIdx < filteredEntries.length - 1;
         return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#15191e]">
-              <div>
-                <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider mr-2">
-                  {selectedEntry.source}
-                </span>
-                <span className="text-xs text-slate-400 font-semibold">
-                  {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
-                </span>
-                <h2 className="text-lg font-black text-slate-100 mt-1">
-                  {selectedEntry.title}
-                </h2>
-              </div>
-              <button
-                onClick={handleCloseModal}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Nav Bar with Explorer Back/Forward and Page Prev/Next */}
-            <div className="px-4 py-2 border-b border-slate-800/60 bg-[#13171c] flex items-center justify-between gap-2 shrink-0">
-              {/* Left: File Explorer Back/Forward History */}
-              <div className="flex items-center gap-1">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+              {/* Modal Header */}
+              <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#15191e]">
+                <div>
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider mr-2">
+                    {selectedEntry.source}
+                  </span>
+                  <span className="text-xs text-slate-400 font-semibold">
+                    {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
+                  </span>
+                  <h2 className="text-lg font-black text-slate-100 mt-1">
+                    {selectedEntry.title}
+                  </h2>
+                </div>
                 <button
-                  disabled={historyIndex <= 0}
-                  onClick={handleHistoryBack}
-                  className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
-                    historyIndex > 0
-                      ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
-                      : 'text-slate-700 cursor-not-allowed'
-                  }`}
-                  title="Go Back (History)"
+                  onClick={handleCloseModal}
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition-colors"
                 >
-                  <ArrowLeft size={14} />
-                </button>
-                <button
-                  disabled={historyIndex >= history.length - 1}
-                  onClick={handleHistoryForward}
-                  className={`p-1.5 rounded transition-all duration-200 border border-transparent ${
-                    historyIndex < history.length - 1
-                      ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
-                      : 'text-slate-700 cursor-not-allowed'
-                  }`}
-                  title="Go Forward (History)"
-                >
-                  <ArrowRight size={14} />
+                  <X size={20} />
                 </button>
               </div>
 
-              {/* Right: Sequential Timeline Page Prev/Next */}
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={!hasPrev}
-                  onClick={() => { if (hasPrev) navigateToEntry(filteredEntries[currentIdx - 1], 'prev-next'); }}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasPrev ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
-                  title="Previous Item in Timeline"
-                >
-                  <ChevronLeft size={14} />
-                  Prev
-                </button>
-                <span className="text-[10px] text-slate-500 font-semibold tabular-nums select-none bg-slate-950 px-2 py-0.5 rounded border border-slate-900">
-                  {currentIdx >= 0 ? `${currentIdx + 1} / ${filteredEntries.length}` : '- / -'}
-                </span>
-                <button
-                  disabled={!hasNext}
-                  onClick={() => { if (hasNext) navigateToEntry(filteredEntries[currentIdx + 1], 'prev-next'); }}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasNext ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
-                  title="Next Item in Timeline"
-                >
-                  Next
-                  <ChevronRight size={14} />
-                </button>
+              {/* Nav Bar with Explorer Back/Forward and Page Prev/Next */}
+              <div className="px-4 py-2 border-b border-slate-800/60 bg-[#13171c] flex items-center justify-between gap-2 shrink-0">
+                {/* Left: File Explorer Back/Forward History */}
+                <div className="flex items-center gap-1">
+                  <button
+                    disabled={historyIndex <= 0}
+                    onClick={handleHistoryBack}
+                    className={`p-1.5 rounded transition-all duration-200 border border-transparent ${historyIndex > 0
+                        ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                        : 'text-slate-700 cursor-not-allowed'
+                      }`}
+                    title="Go Back (History)"
+                  >
+                    <ArrowLeft size={14} />
+                  </button>
+                  <button
+                    disabled={historyIndex >= history.length - 1}
+                    onClick={handleHistoryForward}
+                    className={`p-1.5 rounded transition-all duration-200 border border-transparent ${historyIndex < history.length - 1
+                        ? 'text-slate-350 hover:text-emerald-450 hover:bg-slate-800 hover:border-slate-700'
+                        : 'text-slate-700 cursor-not-allowed'
+                      }`}
+                    title="Go Forward (History)"
+                  >
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+
+                {/* Right: Sequential Timeline Page Prev/Next */}
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={!hasPrev}
+                    onClick={() => { if (hasPrev) navigateToEntry(filteredEntries[currentIdx - 1], 'prev-next'); }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasPrev ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                    title="Previous Item in Timeline"
+                  >
+                    <ChevronLeft size={14} />
+                    Prev
+                  </button>
+                  <span className="text-[10px] text-slate-500 font-semibold tabular-nums select-none bg-slate-950 px-2 py-0.5 rounded border border-slate-900">
+                    {currentIdx >= 0 ? `${currentIdx + 1} / ${filteredEntries.length}` : '- / -'}
+                  </span>
+                  <button
+                    disabled={!hasNext}
+                    onClick={() => { if (hasNext) navigateToEntry(filteredEntries[currentIdx + 1], 'prev-next'); }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold transition-colors ${hasNext ? 'text-slate-300 hover:bg-slate-800 hover:text-white' : 'text-slate-700 cursor-not-allowed'}`}
+                    title="Next Item in Timeline"
+                  >
+                    Next
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Modal Body / Markdown Content */}
-            <div className="flex-1 overflow-y-auto p-6 prose prose-invert max-w-none text-slate-300">
-              {(() => {
-                const depIds = selectedEntry.dependencies || [];
-                const validDeps = depIds
-                  .map(id => entries.find(e => e.id === id))
-                  .filter((e): e is PortfolioEntry => !!e);
+              {/* Modal Body / Markdown Content */}
+              <div className="flex-1 overflow-y-auto p-6 prose prose-invert max-w-none text-slate-300">
+                {(() => {
+                  const depIds = selectedEntry.dependencies || [];
+                  const validDeps = depIds
+                    .map(id => entries.find(e => e.id === id))
+                    .filter((e): e is PortfolioEntry => !!e);
 
-                if (validDeps.length === 0) return null;
+                  if (validDeps.length === 0) return null;
 
-                return (
-                  <div className="mb-6 p-4 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
-                      <span>Connection Network</span>
-                      <span className="text-[9px] text-slate-650 font-medium normal-case">Hover to identify • Click to navigate</span>
-                    </div>
-                    <div className="relative w-full" style={{ height: `${Math.max(100, validDeps.length * 36 + 40)}px` }}>
-                      <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(100, validDeps.length * 36 + 40)}`} preserveAspectRatio="xMidYMid meet">
-                        {/* Draw Wires */}
-                        {validDeps.map((dep, idx) => {
-                          const N = validDeps.length;
-                          const svgH = Math.max(100, N * 36 + 40);
-                          const yStart = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
-                          const yEnd = svgH / 2;
-                          const xStart = 50;
-                          const xEnd = 370;
-                          const dx = (xEnd - xStart) / 2;
-                          const pathD = `M ${xStart} ${yStart} C ${xStart + dx} ${yStart}, ${xEnd - dx} ${yEnd}, ${xEnd} ${yEnd}`;
-                          const isHovered = hoveredDepId === dep.id;
-                          const depColor = getDependencyColor(dep);
-                          
-                          return (
-                            <path
-                              key={`wire-${dep.id}`}
-                              d={pathD}
-                              fill="none"
-                              stroke={isHovered ? depColor : "rgba(148, 163, 184, 0.18)"}
-                              strokeWidth={isHovered ? 2.5 : 1.2}
-                              className="transition-all duration-350 ease-out"
-                            />
-                          );
-                        })}
-
-                        {/* Draw Left Nodes (Dependencies) */}
-                        {validDeps.map((dep, idx) => {
-                          const N = validDeps.length;
-                          const svgH = Math.max(100, N * 36 + 40);
-                          const y = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
-                          const x = 50;
-                          const depColor = getDependencyColor(dep);
-                          const isHovered = hoveredDepId === dep.id;
-                          // Truncate title to ~22 chars for the label
-                          const label = dep.title.length > 22 ? dep.title.slice(0, 21) + '…' : dep.title;
-
-                          return (
-                            <g
-                              key={`node-dep-${dep.id}`}
-                              className="cursor-pointer group"
-                              onMouseEnter={() => setHoveredDepId(dep.id)}
-                              onMouseLeave={() => setHoveredDepId(null)}
-                              onClick={() => navigateToEntry(dep, 'click')}>
-                              {/* Outer Glow on Hover */}
-                              <circle
-                                cx={x}
-                                cy={y}
-                                r={isHovered ? 12 : 0}
-                                fill={depColor}
-                                opacity={0.25}
-                                className="transition-all duration-200"
-                              />
-                              {/* Inner Circle */}
-                              <circle
-                                cx={x}
-                                cy={y}
-                                r={7}
-                                fill={depColor}
-                                stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"}
-                                strokeWidth={1.5}
-                                className="transition-all duration-200"
-                              />
-                              {/* Label to the right of the node */}
-                              <text
-                                x={x + 14}
-                                y={y + 4}
-                                fontSize={10}
-                                fill={isHovered ? '#e2e8f0' : '#64748b'}
-                                fontFamily="ui-monospace, monospace"
-                                fontWeight={isHovered ? 700 : 500}
-                                className="transition-all duration-200 pointer-events-none select-none"
-                              >
-                                {label}
-                              </text>
-                            </g>
-                          );
-                        })}
-
-                        {/* Draw Right Node (Current Card) */}
-                        {(() => {
-                          const N = validDeps.length;
-                          const svgH = Math.max(100, N * 36 + 40);
-                          const x = 370;
-                          const y = svgH / 2;
-                          const currentColor = getDependencyColor(selectedEntry);
-                          const label = selectedEntry.title.length > 14 ? selectedEntry.title.slice(0, 13) + '…' : selectedEntry.title;
-                          return (
-                            <g className="cursor-default">
-                              {/* Glow */}
-                              <circle
-                                cx={x}
-                                cy={y}
-                                r={16}
-                                fill={currentColor}
-                                opacity={0.15}
-                              />
-                              <circle
-                                cx={x}
-                                cy={y}
-                                r={10}
-                                fill={currentColor}
-                                stroke="rgba(0,0,0,0.6)"
-                                strokeWidth={2}
-                              />
-                              {/* Central dot */}
-                              <circle
-                                cx={x}
-                                cy={y}
-                                r={3}
-                                fill="#ffffff"
-                              />
-                              {/* Label to the right of the current node */}
-                              <text
-                                x={x + 16}
-                                y={y + 4}
-                                fontSize={10}
-                                fill="#cbd5e1"
-                                fontFamily="ui-monospace, monospace"
-                                fontWeight={700}
-                                className="pointer-events-none select-none"
-                              >
-                                {label}
-                              </text>
-                            </g>
-                          );
-                        })()}
-                      </svg>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {selectedEntry.imgPath && (
-                selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
-                  <div className="w-full mb-6">
-                    <div className="w-full h-[450px] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3">
-                      <iframe
-                        src={`${selectedEntry.imgPath}#toolbar=0`}
-                        className="w-full h-full border-none"
-                        title={selectedEntry.title}
-                      />
-                    </div>
-                    <div className="p-3 rounded-lg border border-slate-800 bg-[#15191e]/60 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded bg-red-950/30 border border-red-900/40 flex items-center justify-center text-red-500 font-bold text-xs select-none">
-                          PDF
-                        </div>
-                        <div className="truncate max-w-[200px] sm:max-w-sm">
-                          <p className="text-[11px] font-bold text-slate-200 truncate" title={selectedEntry.imgPath.split('/').pop()}>
-                            {selectedEntry.imgPath.split('/').pop()}
-                          </p>
-                        </div>
+                  return (
+                    <div className="mb-6 p-4 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
+                        <span>Connection Network</span>
+                        <span className="text-[9px] text-slate-650 font-medium normal-case">Hover to identify • Click to navigate</span>
                       </div>
-                      <a
-                        href={selectedEntry.imgPath}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 bg-red-650 hover:bg-red-600 text-white rounded text-xs font-bold transition-colors"
-                      >
-                        Open Full PDF
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-800 mb-6 bg-slate-900/50">
-                    <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
-                  </div>
-                )
-              )}
-              
-              {selectedEntry.body ? (
-                <ReactMarkdown className="markdown-content space-y-4">
-                  {selectedEntry.body}
-                </ReactMarkdown>
-              ) : (
-                <p className="text-xs italic text-slate-400 flex items-center gap-1">
-                  <Info size={14} />
-                  <span>No detailed archive description provided in index.md.</span>
-                </p>
-              )}
-            </div>
+                      <div className="relative w-full" style={{ height: `${Math.max(100, validDeps.length * 36 + 40)}px` }}>
+                        <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(100, validDeps.length * 36 + 40)}`} preserveAspectRatio="xMidYMid meet">
+                          {/* Draw Wires */}
+                          {validDeps.map((dep, idx) => {
+                            const N = validDeps.length;
+                            const svgH = Math.max(100, N * 36 + 40);
+                            const yStart = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
+                            const yEnd = svgH / 2;
+                            const xStart = 50;
+                            const xEnd = 370;
+                            const dx = (xEnd - xStart) / 2;
+                            const pathD = `M ${xStart} ${yStart} C ${xStart + dx} ${yStart}, ${xEnd - dx} ${yEnd}, ${xEnd} ${yEnd}`;
+                            const isHovered = hoveredDepId === dep.id;
+                            const depColor = getDependencyColor(dep);
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2 bg-[#15191e]">
-              <button
-                onClick={() => handleOpenFolder(selectedEntry.folderPath)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
-              >
-                <Folder size={14} />
-                <span>Open Local Folder</span>
-              </button>
-              {selectedEntry.github && (
-                <a
-                  href={selectedEntry.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-colors border border-transparent"
+                            return (
+                              <path
+                                key={`wire-${dep.id}`}
+                                d={pathD}
+                                fill="none"
+                                stroke={isHovered ? depColor : "rgba(148, 163, 184, 0.18)"}
+                                strokeWidth={isHovered ? 2.5 : 1.2}
+                                className="transition-all duration-350 ease-out"
+                              />
+                            );
+                          })}
+
+                          {/* Draw Left Nodes (Dependencies) */}
+                          {validDeps.map((dep, idx) => {
+                            const N = validDeps.length;
+                            const svgH = Math.max(100, N * 36 + 40);
+                            const y = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
+                            const x = 50;
+                            const depColor = getDependencyColor(dep);
+                            const isHovered = hoveredDepId === dep.id;
+                            // Truncate title to ~22 chars for the label
+                            const label = dep.title.length > 22 ? dep.title.slice(0, 21) + '…' : dep.title;
+
+                            return (
+                              <g
+                                key={`node-dep-${dep.id}`}
+                                className="cursor-pointer group"
+                                onMouseEnter={() => setHoveredDepId(dep.id)}
+                                onMouseLeave={() => setHoveredDepId(null)}
+                                onClick={() => navigateToEntry(dep, 'click')}>
+                                {/* Outer Glow on Hover */}
+                                <circle
+                                  cx={x}
+                                  cy={y}
+                                  r={isHovered ? 12 : 0}
+                                  fill={depColor}
+                                  opacity={0.25}
+                                  className="transition-all duration-200"
+                                />
+                                {/* Inner Circle */}
+                                <circle
+                                  cx={x}
+                                  cy={y}
+                                  r={7}
+                                  fill={depColor}
+                                  stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"}
+                                  strokeWidth={1.5}
+                                  className="transition-all duration-200"
+                                />
+                                {/* Label to the right of the node */}
+                                <text
+                                  x={x + 14}
+                                  y={y + 4}
+                                  fontSize={10}
+                                  fill={isHovered ? '#e2e8f0' : '#64748b'}
+                                  fontFamily="ui-monospace, monospace"
+                                  fontWeight={isHovered ? 700 : 500}
+                                  className="transition-all duration-200 pointer-events-none select-none"
+                                >
+                                  {label}
+                                </text>
+                              </g>
+                            );
+                          })}
+
+                          {/* Draw Right Node (Current Card) */}
+                          {(() => {
+                            const N = validDeps.length;
+                            const svgH = Math.max(100, N * 36 + 40);
+                            const x = 370;
+                            const y = svgH / 2;
+                            const currentColor = getDependencyColor(selectedEntry);
+                            const label = selectedEntry.title.length > 14 ? selectedEntry.title.slice(0, 13) + '…' : selectedEntry.title;
+                            return (
+                              <g className="cursor-default">
+                                {/* Glow */}
+                                <circle
+                                  cx={x}
+                                  cy={y}
+                                  r={16}
+                                  fill={currentColor}
+                                  opacity={0.15}
+                                />
+                                <circle
+                                  cx={x}
+                                  cy={y}
+                                  r={10}
+                                  fill={currentColor}
+                                  stroke="rgba(0,0,0,0.6)"
+                                  strokeWidth={2}
+                                />
+                                {/* Central dot */}
+                                <circle
+                                  cx={x}
+                                  cy={y}
+                                  r={3}
+                                  fill="#ffffff"
+                                />
+                                {/* Label to the right of the current node */}
+                                <text
+                                  x={x + 16}
+                                  y={y + 4}
+                                  fontSize={10}
+                                  fill="#cbd5e1"
+                                  fontFamily="ui-monospace, monospace"
+                                  fontWeight={700}
+                                  className="pointer-events-none select-none"
+                                >
+                                  {label}
+                                </text>
+                              </g>
+                            );
+                          })()}
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {selectedEntry.imgPath && (
+                  selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
+                    <div className="w-full mb-6">
+                      <div className="w-full h-[450px] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-3">
+                        <iframe
+                          src={`${selectedEntry.imgPath}#toolbar=0`}
+                          className="w-full h-full border-none"
+                          title={selectedEntry.title}
+                        />
+                      </div>
+                      <div className="p-3 rounded-lg border border-slate-800 bg-[#15191e]/60 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded bg-red-950/30 border border-red-900/40 flex items-center justify-center text-red-500 font-bold text-xs select-none">
+                            PDF
+                          </div>
+                          <div className="truncate max-w-[200px] sm:max-w-sm">
+                            <p className="text-[11px] font-bold text-slate-200 truncate" title={selectedEntry.imgPath.split('/').pop()}>
+                              {selectedEntry.imgPath.split('/').pop()}
+                            </p>
+                          </div>
+                        </div>
+                        <a
+                          href={selectedEntry.imgPath}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-red-650 hover:bg-red-600 text-white rounded text-xs font-bold transition-colors"
+                        >
+                          Open Full PDF
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-800 mb-6 bg-slate-900/50">
+                      <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
+                    </div>
+                  )
+                )}
+
+                {selectedEntry.body ? (
+                  <ReactMarkdown className="markdown-content space-y-4">
+                    {selectedEntry.body}
+                  </ReactMarkdown>
+                ) : (
+                  <p className="text-xs italic text-slate-400 flex items-center gap-1">
+                    <Info size={14} />
+                    <span>No detailed archive description provided in index.md.</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-800 flex justify-end gap-2 bg-[#15191e]">
+                <button
+                  onClick={() => handleOpenFolder(selectedEntry.folderPath)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
                 >
-                  <Github size={14} />
-                  <span>View GitHub</span>
-                </a>
-              )}
-              {selectedEntry.linkedin && (
-                <a
-                  href={selectedEntry.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-900/45 hover:bg-blue-800/60 border border-blue-800/30 text-blue-205 rounded-lg text-xs font-bold transition-colors"
+                  <Folder size={14} />
+                  <span>Open Local Folder</span>
+                </button>
+                {selectedEntry.github && (
+                  <a
+                    href={selectedEntry.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold transition-colors border border-transparent"
+                  >
+                    <Github size={14} />
+                    <span>View GitHub</span>
+                  </a>
+                )}
+                {selectedEntry.linkedin && (
+                  <a
+                    href={selectedEntry.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-900/45 hover:bg-blue-800/60 border border-blue-800/30 text-blue-205 rounded-lg text-xs font-bold transition-colors"
+                  >
+                    <Linkedin size={14} />
+                    <span>LinkedIn</span>
+                  </a>
+                )}
+                <button
+                  onClick={() => handleDuplicateEntry(selectedEntry.id)}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
                 >
-                  <Linkedin size={14} />
-                  <span>LinkedIn</span>
-                </a>
-              )}
-              <button
-                onClick={() => handleDuplicateEntry(selectedEntry.id)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
-              >
-                <Copy size={14} />
-                <span>Duplicate</span>
-              </button>
-              <button
-                onClick={() => {
-                  setEditEntry(selectedEntry);
-                  setIsAddPopupOpen(true);
-                  navigateToEntry(null);
-                }}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={handleCloseModal}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
-              >
-                Close
-              </button>
+                  <Copy size={14} />
+                  <span>Duplicate</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setEditEntry(selectedEntry);
+                    setIsAddPopupOpen(true);
+                    navigateToEntry(null);
+                  }}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         );
       })()}
 
@@ -1323,6 +1477,8 @@ export const App: React.FC = () => {
         filteredEntries={filteredEntries}
         onNavigateToEntry={(entry) => navigateToEntry(entry, 'prev-next')}
         onDuplicate={handleDuplicateEntry}
+        checkedCards={checkedCards}
+        onSaveSuccess={handleSaveSuccess}
       />
 
       {/* Dreaming Modal Popup */}
@@ -1331,107 +1487,172 @@ export const App: React.FC = () => {
           {/* Static cosmic dream background glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_65%)] pointer-events-none" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.05)_0%,transparent_60%)] pointer-events-none" />
-          
+
           <div className="bg-[#0c0e12]/95 border-2 border-emerald-500/40 rounded-2xl max-w-6xl w-full h-[85vh] flex flex-col shadow-[0_0_50px_rgba(16,185,129,0.25)] overflow-hidden relative z-10">
             {/* Modal Header */}
-            <div className="p-5 border-b border-emerald-500/20 flex justify-between items-center bg-emerald-950/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg text-white font-black text-lg select-none">
-                  🔮
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-slate-100 uppercase tracking-widest font-dota flex items-center gap-2">
-                    <span>Dreaming Oracle: 5 Years Soon</span>
-                    <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-350 border border-emerald-500/30 uppercase tracking-widest font-bold">
-                      Chronological Vision
-                    </span>
-                  </h2>
-                  <p className="text-[10px] text-emerald-400/80 uppercase tracking-wider font-semibold mt-0.5">
-                    Portfolio entries projected from past origins to upcoming futures (Earliest to Latest)
-                  </p>
+            <div className="p-5 border-b border-emerald-500/20 flex flex-col md:flex-row items-center justify-between bg-emerald-950/10 gap-4 relative">
+              {/* Left side: Toggle show all / only undone */}
+              <div className="md:absolute md:left-5 md:top-1/2 md:-translate-y-1/2 z-10">
+                <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/80 border border-slate-850 rounded-lg max-w-[200px] select-none">
+                  <button
+                    onClick={() => {
+                      if (soundEnabled) sfx.playTick();
+                      setDreamingShowAll(false);
+                    }}
+                    className={`px-3 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-widest ${!dreamingShowAll
+                        ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-350'
+                      }`}
+                  >
+                    Undone
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (soundEnabled) sfx.playTick();
+                      setDreamingShowAll(true);
+                    }}
+                    className={`px-3 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-widest ${dreamingShowAll
+                        ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-350'
+                      }`}
+                  >
+                    Show All
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  if (soundEnabled) sfx.playTick();
-                  setIsDreamingOpen(false);
-                }}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition-colors border border-transparent hover:border-slate-700/50"
-              >
-                <X size={20} />
-              </button>
+
+              {/* Center: Title align center */}
+              <div className="flex-1 flex flex-col items-center text-center w-full">
+                <h2 className="text-lg md:text-2xl font-black text-slate-100 uppercase tracking-[0.18em] font-dota">
+                  Tegak Lurus Planning
+                </h2>
+              </div>
+
+              {/* Right side: Close button */}
+              <div className="absolute right-5 top-5 md:top-1/2 md:-translate-y-1/2 z-10">
+                <button
+                  onClick={() => {
+                    if (soundEnabled) sfx.playTick();
+                    setIsDreamingOpen(false);
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-200 transition-colors border border-transparent hover:border-slate-700/50"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            {/* Modal Body: Scrollable list of cards in ascending order of datestart */}
+            {/* Modal Body: Scrollable list of cards in a chronological vertical timeline section */}
             <div className="flex-1 overflow-y-auto p-8 bg-slate-950/20">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 justify-items-center">
-                {(() => {
-                  const today = new Date();
-                  const year = today.getFullYear();
-                  const month = String(today.getMonth() + 1).padStart(2, '0');
-                  const day = String(today.getDate()).padStart(2, '0');
-                  const todayStr = `${year}-${month}-${day}`;
+              {(() => {
+                const upcomingEntries = getUpcomingEntriesList();
+                const today = new Date();
+                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-                  const maxDate = new Date();
-                  maxDate.setFullYear(year + 5);
-                  const maxYear = maxDate.getFullYear();
-                  const maxMonth = String(maxDate.getMonth() + 1).padStart(2, '0');
-                  const maxDay = String(maxDate.getDate()).padStart(2, '0');
-                  const maxDateStr = `${maxYear}-${maxMonth}-${maxDay}`;
+                if (upcomingEntries.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-emerald-900/40 rounded-xl bg-emerald-950/5 backdrop-blur-sm mt-8 w-full">
+                      <span className="text-3xl mb-3">🔮</span>
+                      <p className="text-sm text-emerald-300 font-semibold font-dota">
+                        No future timeline entries detected from today onwards.
+                      </p>
+                      <p className="text-xs text-emerald-400/70 mt-1 max-w-md">
+                        Today's date is <span className="text-cyan-400 font-mono">{todayStr}</span>. Click below to add a course or project with a future date to seed your dreams!
+                      </p>
+                      <button
+                        onClick={() => {
+                          if (soundEnabled) sfx.playTick();
+                          openAddModal();
+                        }}
+                        className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      >
+                        <span>+ Add Upcoming Dream</span>
+                      </button>
+                    </div>
+                  );
+                }
 
-                  const upcomingEntries = entries.filter((entry) => {
-                    if (!entry.datestart) return false;
-                    return entry.datestart >= todayStr && entry.datestart <= maxDateStr;
-                  }).sort((a, b) => a.datestart.localeCompare(b.datestart));
-
-                  if (upcomingEntries.length === 0) {
-                    return (
-                      <div className="col-span-full flex flex-col items-center justify-center p-12 text-center border border-dashed border-emerald-900/40 rounded-xl bg-emerald-950/5 backdrop-blur-sm mt-8">
-                        <span className="text-3xl mb-3">🔮</span>
-                        <p className="text-sm text-emerald-300 font-semibold font-dota">
-                          No future timeline entries detected in the next 5 years.
-                        </p>
-                        <p className="text-xs text-emerald-400/70 mt-1 max-w-md">
-                          Today's date is <span className="text-cyan-400 font-mono">{todayStr}</span>. Click below to add a course or project with a future date to seed your dreams!
-                        </p>
-                        <button
-                          onClick={() => {
-                            if (soundEnabled) sfx.playTick();
-                            openAddModal();
-                          }}
-                          className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                        >
-                          <span>+ Add Upcoming Dream</span>
-                        </button>
-                      </div>
-                    );
+                // Group entries by year
+                const entriesByYear: Record<string, PortfolioEntry[]> = {};
+                upcomingEntries.forEach(entry => {
+                  const y = entry.datestart ? entry.datestart.substring(0, 4) : 'Undated';
+                  if (!entriesByYear[y]) {
+                    entriesByYear[y] = [];
                   }
+                  entriesByYear[y].push(entry);
+                });
 
-                  return upcomingEntries.map((entry) => {
-                    const cardProps = {
-                      key: `dream_${entry.id}`,
-                      entry,
-                      onOpenFolder: handleOpenFolder,
-                      onMore: handleMoreClick,
-                      thinnerCard,
-                      isChecked: checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false),
-                      onToggleChecked: toggleCardChecked
-                    };
-                    switch (entry.source) {
-                      case 'proj':
-                        return <ProjectCard {...cardProps} />;
-                      case 'cert':
-                        return <CertCard {...cardProps} />;
-                      case 'item':
-                        return <ItemCard {...cardProps} />;
-                      case 'achv':
-                        return <AchievementCard {...cardProps} />;
-                      default:
-                        return null;
-                    }
-                  });
-                })()}
-              </div>
+                const sortedYears = Object.keys(entriesByYear).sort();
+
+                return (
+                  <div className="w-full flex flex-col gap-8 py-2">
+                    {sortedYears.map((y) => {
+                      const yearEntries = entriesByYear[y];
+                      return (
+                        <div key={`year_section_${y}`} className="w-full flex flex-col gap-6">
+                          {/* Year Header Divider */}
+                          <div className="w-full flex items-center gap-4 select-none">
+                            <span className="text-sm font-black text-emerald-400 font-dota tracking-widest">{y}</span>
+                            <div className="flex-1 h-[2px] bg-gradient-to-r from-emerald-500/30 via-slate-800/50 to-transparent" />
+                          </div>
+
+                          {/* Cards List in this year section */}
+                          <div className="flex flex-col gap-8 w-full">
+                            {yearEntries.map((entry) => {
+                              const cardProps = {
+                                key: `dream_${entry.id}`,
+                                entry,
+                                onOpenFolder: handleOpenFolder,
+                                onMore: handleMoreClick,
+                                thinnerCard,
+                                isChecked: checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false),
+                                onToggleChecked: toggleCardChecked
+                              };
+
+                              const isRevealed = !matchReadySimEnabled || !isDreamingSequenceActive || !!revealedCardIds[entry.id];
+
+                              const renderCard = () => {
+                                switch (entry.source) {
+                                  case 'proj':
+                                    return <ProjectCard {...cardProps} />;
+                                  case 'cert':
+                                    return <CertCard {...cardProps} />;
+                                  case 'item':
+                                    return <ItemCard {...cardProps} />;
+                                  case 'achv':
+                                    return <AchievementCard {...cardProps} />;
+                                  default:
+                                    return null;
+                                }
+                              };
+
+                              return (
+                                <div key={`dream_item_${entry.id}`} className="w-full flex flex-col items-start gap-2.5">
+                                  {/* Date Badge */}
+                                  <span className="text-[10px] font-bold text-slate-400 bg-slate-900/60 px-2.5 py-0.5 rounded border border-slate-800/80 select-none">
+                                    {formatDate(entry.datestart)}
+                                  </span>
+
+                                  {/* Flippable Card Container */}
+                                  <div className="w-full">
+                                    <FlippableCard
+                                      key={`dream_flip_${entry.id}`}
+                                      isRevealed={isRevealed}
+                                      thinnerCard={thinnerCard}
+                                    >
+                                      {renderCard()}
+                                    </FlippableCard>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}
@@ -1475,7 +1696,7 @@ export const App: React.FC = () => {
             <div className="flex gap-3 justify-center mt-2">
               <button
                 onClick={() => {
-                  if (soundEnabled) sfx.playTick();
+                  if (soundEnabled) sfx.playFail();
                   setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 }}
                 className="px-5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400 font-sans"
@@ -1484,13 +1705,67 @@ export const App: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  if (soundEnabled) sfx.playTick();
                   confirmModal.onConfirm();
                   setConfirmModal(prev => ({ ...prev, isOpen: false }));
                 }}
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm font-sans"
               >
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dota 2 Match Ready Prompt */}
+      {isMatchReadyPromptOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md select-none font-dota">
+          {/* Animated green cosmic background aura */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_60%)] pointer-events-none animate-pulse" />
+
+          <div className="bg-[#0b0e12] border-2 border-emerald-500/40 rounded-sm max-w-lg w-full p-8 shadow-[0_0_50px_rgba(16,185,129,0.3)] flex flex-col gap-6 relative overflow-hidden text-center">
+            {/* Top decorative gradient line */}
+            <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" />
+
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-[0.25em] font-dota select-none">
+                Your Vision is Ready
+              </span>
+              <h3 className="text-3xl font-black text-slate-100 uppercase tracking-widest font-dota my-1">
+                ALl PLANNING
+              </h3>
+            </div>
+
+            {/* Accept Match Button Container */}
+            <div className="flex flex-col items-center justify-center py-4">
+              <button
+                disabled={isAcceptingMatch}
+                onClick={handleAcceptMatchReady}
+                className={`relative group overflow-hidden px-14 py-4 bg-gradient-to-b from-emerald-600 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 border-t border-emerald-400 text-white font-extrabold uppercase tracking-widest text-lg shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] transition-all rounded active:translate-y-[1px] min-w-[220px] ${isAcceptingMatch ? 'opacity-90 cursor-wait' : 'cursor-pointer'
+                  }`}
+              >
+                {isAcceptingMatch ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    CONNECTING
+                  </span>
+                ) : (
+                  "ACCEPT"
+                )}
+              </button>
+            </div>
+
+            {/* Decline Match Button */}
+            <div className="flex justify-center mt-2">
+              <button
+                disabled={isAcceptingMatch}
+                onClick={() => {
+                  if (soundEnabled) sfx.playFail();
+                  setIsMatchReadyPromptOpen(false);
+                }}
+                className="text-[10px] text-slate-500 hover:text-slate-300 font-bold uppercase tracking-widest transition-colors flex items-center gap-1 hover:underline"
+              >
+                <span>🛈</span> Decline Match
               </button>
             </div>
           </div>

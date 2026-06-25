@@ -10,6 +10,7 @@ const hasCerts = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
 export default defineConfig({
   plugins: [react()],
+  assetsInclude: ['**/*.mpeg'],
   server: {
     port: 5173,
     https: hasCerts ? {

@@ -60,11 +60,15 @@ export const CertCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thi
           </div>
 
           {/* 3-Circle Orb Combo Icon (far right) */}
-          <div className="w-8 h-7 relative shrink-0">
-            <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
-            <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
-            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color3, boxShadow: `0 0 8px ${color3}` }} />
-          </div>
+          {entry.skill && entry.skill.trim().length === 3 ? (
+            <div className="w-8 h-7 relative shrink-0">
+              <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
+              <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
+              <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color3, boxShadow: `0 0 8px ${color3}` }} />
+            </div>
+          ) : (
+            <div className="w-8 h-7 shrink-0" />
+          )}
         </div>
 
         {/* Date block: moved above thumbnail, aligned left */}

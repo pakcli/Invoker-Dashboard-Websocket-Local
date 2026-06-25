@@ -33,10 +33,18 @@ const getOrbColors = (skillStr: string | undefined) => {
 export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thinnerCard, isChecked = false, onToggleChecked }) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
+  const borderAndGlowClasses = isChecked
+    ? 'border-[#d4af50]/80 achievement-card-glow shadow-[0_0_20px_rgba(212,175,80,0.25)]'
+    : 'border-emerald-500/80 achievement-card-green-glow shadow-[0_0_20px_rgba(16,185,129,0.25)]';
+
+  const badgeClasses = isChecked 
+    ? 'bg-amber-500/5 text-[#d4af50] dark:text-[#d4af50]/90 border-[#d4af50]/20'
+    : 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20';
+
   return (
     <div 
       onClick={() => onMore(entry)}
-      className={`bg-[#121418]/90 border-[3px] border-[#d4af50]/80 rounded-xl hover:border-slate-200/60 transition-all duration-300 achievement-card-glow shadow-[0_0_20px_rgba(212,175,80,0.25)] group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${
+      className={`bg-[#121418]/90 border-[3px] rounded-xl hover:border-slate-200/60 transition-all duration-300 group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${borderAndGlowClasses} ${
         thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'aspect-[4/3] p-5'
       }`}
     >
@@ -48,7 +56,7 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
       <div className="flex-1 flex flex-col min-h-0 relative z-10">
         <div className={`flex gap-3 items-center shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
           {/* Category Label Badge (far left) */}
-          <span className="text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded bg-amber-500/5 text-[#d4af50] dark:text-[#d4af50]/90 border border-[#d4af50]/20 whitespace-nowrap shrink-0">
+          <span className={`text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded border whitespace-nowrap shrink-0 ${badgeClasses}`}>
             ACHIEVEMENT
           </span>
           
@@ -60,11 +68,15 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
           </div>
 
           {/* 3-Circle Orb Combo Icon (far right) */}
-          <div className="w-8 h-7 relative shrink-0">
-            <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
-            <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
-            <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color3, boxShadow: `0 0 8px ${color3}` }} />
-          </div>
+          {entry.skill && entry.skill.trim().length === 3 ? (
+            <div className="w-8 h-7 relative shrink-0">
+              <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
+              <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color2, boxShadow: `0 0 8px ${color2}` }} />
+              <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color3, boxShadow: `0 0 8px ${color3}` }} />
+            </div>
+          ) : (
+            <div className="w-8 h-7 shrink-0" />
+          )}
         </div>
 
         {/* Date block: moved above thumbnail, aligned left */}

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import { PortfolioEntry } from '../types';
 import PdfThumbnail from './PdfThumbnail';
+import sfx from '../lib/sfx';
 
 interface AddInstanceModalProps {
   isOpen: boolean;
@@ -17,6 +18,8 @@ interface AddInstanceModalProps {
   filteredEntries?: PortfolioEntry[];
   onNavigateToEntry?: (entry: PortfolioEntry) => void;
   onDuplicate?: (cardId: string) => void;
+  checkedCards?: Record<string, boolean>;
+  onSaveSuccess?: (cardId: string, nextDoneState: boolean) => void;
 }
 
 export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
@@ -32,7 +35,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
   onHistoryForward,
   filteredEntries,
   onNavigateToEntry,
-  onDuplicate
+  onDuplicate,
+  checkedCards,
+  onSaveSuccess
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [category, setCategory] = useState<'proj' | 'cert' | 'item' | 'achv'>('proj');
@@ -110,7 +115,12 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
       setGithub(editEntry.github || '');
       setLinkedin(editEntry.linkedin || '');
       setBodyText(editEntry.body || '');
-      setDone(!!editEntry.done);
+      
+      const currentChecked = checkedCards && checkedCards[editEntry.id] !== undefined
+        ? checkedCards[editEntry.id]
+        : !!editEntry.done;
+      setDone(currentChecked);
+      
       setDependencies(editEntry.dependencies || []);
       setDepQuery('');
       
@@ -132,7 +142,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     } else if (isOpen && !editEntry) {
       handleReset();
     }
-  }, [isOpen, editEntry]);
+  }, [isOpen, editEntry, checkedCards]);
 
   useEffect(() => {
     if (!thumbnailFilename) {
@@ -357,6 +367,32 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
       });
       const result = await res.json();
       if (res.ok && result.success) {
+        const wasDone = editEntry
+          ? (checkedCards && checkedCards[editEntry.id] !== undefined
+              ? checkedCards[editEntry.id]
+              : !!editEntry.done)
+          : false;
+
+        if (done && !wasDone) {
+          if (category === 'achv') {
+            sfx.playTreasure();
+          } else {
+            sfx.playDone();
+          }
+        } else if (!isEditMode && category === 'achv') {
+          if (done) {
+            sfx.playTreasure();
+          } else {
+            sfx.playTick();
+          }
+        } else {
+          sfx.playTick();
+        }
+
+        if (isEditMode && editEntry && onSaveSuccess) {
+          onSaveSuccess(editEntry.id, done);
+        }
+
         handleClose();
       } else {
         alert(`Error: ${result.error || 'Failed to save instance'}`);
