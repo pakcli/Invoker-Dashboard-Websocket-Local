@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, AlertTriangle, ArrowLeftRight, Eye, EyeOff, Plus } from 'lucide-react';
+import { Search, AlertTriangle, ArrowLeftRight, Plus } from 'lucide-react';
 
 interface SearchBarProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   sidebarPosition: 'left' | 'right';
   setSidebarPosition: (pos: 'left' | 'right') => void;
-  sidebarCollapsed: boolean;
-  setSidebarCollapsed: (collapsed: boolean) => void;
   onAddClick: () => void;
+  onResetView: () => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -16,9 +15,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   setSearchQuery,
   sidebarPosition,
   setSidebarPosition,
-  sidebarCollapsed,
-  setSidebarCollapsed,
   onAddClick,
+  onResetView,
 }) => {
   const [isValidRegex, setIsValidRegex] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -109,10 +107,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           </div>
 
           <div className="flex gap-2 shrink-0">
+            {/* Reset View (Now) Button */}
+            <button
+              onClick={onResetView}
+              className="p-2 h-9 px-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center font-black text-[10px] shrink-0 select-none font-dota uppercase tracking-widest"
+              title="Slide timeline to current date (Now)"
+            >
+              Now
+            </button>
+
             {/* ADD New Instance Button */}
             <button
               onClick={onAddClick}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all"
+              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all shrink-0"
               title="Add New Instance"
             >
               <Plus size={20} className="text-emerald-500" />
@@ -121,68 +128,51 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             {/* Toggle Sidebar Side */}
             <button
               onClick={() => setSidebarPosition(sidebarPosition === 'left' ? 'right' : 'left')}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center"
+              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
               title={sidebarPosition === 'left' ? 'Move HUD to Right' : 'Move HUD to Left'}
             >
               <ArrowLeftRight size={18} />
-            </button>
-
-            {/* Toggle Sidebar Collapse */}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={`p-2 w-9 h-9 rounded-lg border transition-colors flex items-center justify-center ${
-                sidebarCollapsed
-                  ? 'bg-slate-900 border-red-900/50 text-red-500 hover:text-red-400 hover:border-red-500/50'
-                  : 'bg-slate-900 border-slate-800 text-emerald-500 hover:text-emerald-400 hover:border-slate-700'
-              }`}
-              title={sidebarCollapsed ? 'Expand HUD' : 'Collapse/Hide HUD'}
-            >
-              {sidebarCollapsed ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
       ) : (
         <div className="flex justify-between items-center w-full">
-          {/* Row of 4 neat buttons */}
+          {/* Row of 4 neat buttons: Search, Swap, Now, + */}
           <div className="flex gap-2.5 w-full justify-between">
             {/* Search Toggle Button */}
             <button
               onClick={() => setIsExpanded(true)}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center"
+              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
               title="Search Archives"
             >
               <Search size={18} />
             </button>
 
-            {/* ADD New Instance Button */}
-            <button
-              onClick={onAddClick}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all"
-              title="Add New Instance"
-            >
-              <Plus size={20} className="text-emerald-500" />
-            </button>
-
             {/* Toggle Sidebar Side */}
             <button
               onClick={() => setSidebarPosition(sidebarPosition === 'left' ? 'right' : 'left')}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center"
+              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
               title={sidebarPosition === 'left' ? 'Move HUD to Right' : 'Move HUD to Left'}
             >
               <ArrowLeftRight size={18} />
             </button>
 
-            {/* Toggle Sidebar Collapse */}
+            {/* Reset View (Now) Button */}
             <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={`p-2 w-9 h-9 rounded-lg border transition-colors flex items-center justify-center ${
-                sidebarCollapsed
-                  ? 'bg-slate-900 border-red-900/50 text-red-500 hover:text-red-400 hover:border-red-500/50'
-                  : 'bg-slate-900 border-slate-800 text-emerald-500 hover:text-emerald-400 hover:border-slate-700'
-              }`}
-              title={sidebarCollapsed ? 'Expand HUD' : 'Collapse/Hide HUD'}
+              onClick={onResetView}
+              className="p-2 h-9 px-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center font-black text-[10px] shrink-0 select-none font-dota uppercase tracking-widest"
+              title="Slide timeline to current date (Now)"
             >
-              {sidebarCollapsed ? <EyeOff size={18} /> : <Eye size={18} />}
+              Now
+            </button>
+
+            {/* ADD New Instance Button */}
+            <button
+              onClick={onAddClick}
+              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all shrink-0"
+              title="Add New Instance"
+            >
+              <Plus size={20} className="text-emerald-500" />
             </button>
           </div>
         </div>

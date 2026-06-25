@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Eye, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy } from 'lucide-react';
+import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -808,32 +808,88 @@ export const App: React.FC = () => {
     setIsAddPopupOpen(true);
   };
 
+  const scrollToCurrentDate = () => {
+    if (filteredEntries.length === 0) return;
+    const today = new Date().toISOString().slice(0, 10);
+    let closestEntry = filteredEntries[0];
+    let minDiff = Infinity;
+
+    filteredEntries.forEach(entry => {
+      if (!entry.datestart) return;
+      const diff = Math.abs(new Date(entry.datestart).getTime() - new Date(today).getTime());
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestEntry = entry;
+      }
+    });
+
+    if (closestEntry) {
+      const el = document.getElementById(`card-${closestEntry.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToCurrentDate();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [reverseTimeline]);
+
   return (
     <div className="h-screen max-h-screen font-dota flex flex-col transition-colors duration-200 overflow-hidden bg-[#0b0d10]">
       {/* Floating Expand HUD Button when Sidebar is Collapsed */}
       {sidebarCollapsed && (
         <button
-          onClick={() => setSidebarCollapsed(false)}
-          className={`fixed top-6 z-40 p-3 rounded-full bg-[#111418] border border-slate-800 hover:border-emerald-500/50 text-emerald-500 hover:text-emerald-400 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] ${sidebarPosition === 'right' ? 'right-6' : 'left-6'
-            }`}
-          title="Expand Invoker HUD & Search"
+          onClick={() => {
+            if (soundEnabled) sfx.playTick();
+            setSidebarCollapsed(false);
+          }}
+          className={`fixed top-6 z-40 p-3 rounded-full bg-[#111418] border border-slate-800 hover:border-emerald-500/50 text-emerald-500 hover:text-emerald-400 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] ${
+            sidebarPosition === 'right' ? 'right-6' : 'left-6'
+          }`}
+          title="Expand Invoker HUD"
         >
-          <Eye size={22} />
+          {sidebarPosition === 'right' ? <ChevronLeft size={22} /> : <ChevronRight size={22} />}
         </button>
       )}
 
       {/* Main Content Layout - Full-screen layout */}
-      <main className={`flex-1 min-h-0 w-full px-6 py-6 flex flex-col lg:flex-row gap-8 items-stretch ${sidebarPosition === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'
-        }`}>
+      <main className={`flex-1 min-h-0 w-full px-6 py-6 flex flex-col lg:flex-row items-stretch ${
+        sidebarCollapsed ? 'gap-0' : 'gap-8'
+      } ${
+        sidebarPosition === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'
+      }`}>
         {/* Interactive HUD Sidebar (exactly 240px width, left/right toggleable & collapsible) */}
-        {!sidebarCollapsed && (
-          <aside className="w-full lg:w-[240px] lg:min-w-[240px] lg:max-w-[240px] shrink-0 flex flex-col gap-5 h-full overflow-y-auto pr-1 scrollbar-thin">
-            {/* Logo Header */}
-            <div className="flex items-center gap-3 pb-2 border-b border-slate-800/80">
+        <aside
+          className={`w-full shrink-0 flex flex-col gap-5 h-full overflow-y-auto pr-1 scrollbar-thin transition-all duration-300 ease-in-out ${
+            sidebarCollapsed
+              ? 'w-0 lg:w-0 lg:min-w-0 lg:max-w-0 opacity-0 pointer-events-none'
+              : 'w-full lg:w-[240px] lg:min-w-[240px] lg:max-w-[240px] opacity-100'
+          }`}
+        >
+          {/* Logo Header */}
+          <div className="flex items-center gap-3 pb-2 border-b border-slate-800/80 justify-between">
+            {sidebarPosition === 'right' && (
+              <button
+                onClick={() => {
+                  if (soundEnabled) sfx.playTick();
+                  setSidebarCollapsed(true);
+                }}
+                className="p-1.5 hover:bg-slate-800/50 rounded-lg text-slate-400 hover:text-slate-200 transition-colors shrink-0 flex items-center justify-center"
+                title="Collapse Sidebar"
+              >
+                <ChevronRight size={18} />
+              </button>
+            )}
+
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-purple-500 to-orange-500 flex items-center justify-center shadow-lg text-white font-black text-lg select-none">
                 🔮
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <h1 className="text-sm font-black tracking-wide text-slate-100 font-dota whitespace-nowrap">
                   INVOKER PORTFOLIO
                 </h1>
@@ -843,57 +899,69 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Search Bar */}
-            <SearchBar
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              sidebarPosition={sidebarPosition}
-              setSidebarPosition={setSidebarPosition}
-              sidebarCollapsed={sidebarCollapsed}
-              setSidebarCollapsed={setSidebarCollapsed}
-              onAddClick={openAddModal}
-            />
+            {sidebarPosition === 'left' && (
+              <button
+                onClick={() => {
+                  if (soundEnabled) sfx.playTick();
+                  setSidebarCollapsed(true);
+                }}
+                className="p-1.5 hover:bg-slate-800/50 rounded-lg text-slate-400 hover:text-slate-200 transition-colors shrink-0 flex items-center justify-center"
+                title="Collapse Sidebar"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+          </div>
 
-            {/* Interactive HUD */}
-            <InvokerHUD
-              mode={mode}
-              setMode={setMode}
-              subFilters={subFilters}
-              setSubFilters={setSubFilters}
-              orbs={orbs}
-              onClear={clearOrbs}
-              onInvoke={invokeCombo}
-              activeCombo={activeCombo}
-              stats={stats}
-              soundEnabled={soundEnabled}
-              setSoundEnabled={setSoundEnabled}
-              volume={volume}
-              setVolume={setVolume}
-              activeStatFilter={activeStatFilter}
-              setActiveStatFilter={setActiveStatFilter}
-              formalMode={formalMode}
-              setFormalMode={setFormalMode}
-              thinnerCard={thinnerCard}
-              setThinnerCard={setThinnerCard}
-              statsMode={statsMode}
-              setStatsMode={setStatsMode}
-              nodeLineMode={nodeLineMode}
-              setNodeLineMode={(m) => { setNodeLineMode(m); localStorage.setItem('nodeLineMode', m); }}
-              readViewMode={readViewMode}
-              setReadViewMode={(m) => { setReadViewMode(m); localStorage.setItem('readViewMode', m); }}
-              clickToEdit={clickToEdit}
-              setClickToEdit={setClickToEdit}
-              matchReadySimEnabled={matchReadySimEnabled}
-              setMatchReadySimEnabled={setMatchReadySimEnabled}
-              dreamingShowAll={dreamingShowAll}
-              setDreamingShowAll={setDreamingShowAll}
-              dreamingIncludePast={dreamingIncludePast}
-              setDreamingIncludePast={setDreamingIncludePast}
-              reverseTimeline={reverseTimeline}
-              setReverseTimeline={setReverseTimeline}
-            />
-          </aside>
-        )}
+          {/* Search Bar */}
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            sidebarPosition={sidebarPosition}
+            setSidebarPosition={setSidebarPosition}
+            onAddClick={openAddModal}
+            onResetView={scrollToCurrentDate}
+          />
+
+          {/* Interactive HUD */}
+          <InvokerHUD
+            mode={mode}
+            setMode={setMode}
+            subFilters={subFilters}
+            setSubFilters={setSubFilters}
+            orbs={orbs}
+            onClear={clearOrbs}
+            onInvoke={invokeCombo}
+            activeCombo={activeCombo}
+            stats={stats}
+            soundEnabled={soundEnabled}
+            setSoundEnabled={setSoundEnabled}
+            volume={volume}
+            setVolume={setVolume}
+            activeStatFilter={activeStatFilter}
+            setActiveStatFilter={setActiveStatFilter}
+            formalMode={formalMode}
+            setFormalMode={setFormalMode}
+            thinnerCard={thinnerCard}
+            setThinnerCard={setThinnerCard}
+            statsMode={statsMode}
+            setStatsMode={setStatsMode}
+            nodeLineMode={nodeLineMode}
+            setNodeLineMode={(m) => { setNodeLineMode(m); localStorage.setItem('nodeLineMode', m); }}
+            readViewMode={readViewMode}
+            setReadViewMode={(m) => { setReadViewMode(m); localStorage.setItem('readViewMode', m); }}
+            clickToEdit={clickToEdit}
+            setClickToEdit={setClickToEdit}
+            matchReadySimEnabled={matchReadySimEnabled}
+            setMatchReadySimEnabled={setMatchReadySimEnabled}
+            dreamingShowAll={dreamingShowAll}
+            setDreamingShowAll={setDreamingShowAll}
+            dreamingIncludePast={dreamingIncludePast}
+            setDreamingIncludePast={setDreamingIncludePast}
+            reverseTimeline={reverseTimeline}
+            setReverseTimeline={setReverseTimeline}
+          />
+        </aside>
 
         {/* Right Side: Timeline Display (Fills the remaining main area) */}
         <section className="flex-1 min-w-0 h-full flex flex-col min-h-0">
@@ -912,27 +980,29 @@ export const App: React.FC = () => {
               </span>
             </div>
 
-            {isDreamingOpen && readViewMode === 'split' ? (
-              <button
-                onClick={() => {
-                  if (soundEnabled) sfx.playTick();
-                  setIsDreamingOpen(false);
-                }}
-                className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-200 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm font-dota uppercase tracking-wider shrink-0"
-              >
-                Close Vision
-              </button>
-            ) : (
-              <button
-                onClick={triggerDreamingVision}
-                className="relative overflow-hidden px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-950/75 to-teal-950/75 hover:from-emerald-900 hover:to-teal-900 border border-emerald-500/30 text-emerald-250 hover:text-white transition-all text-xs font-black tracking-wider uppercase flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] group shrink-0"
-              >
-                <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)]" />
-                <span className="relative z-10 flex items-center gap-1.5 font-dota">
-                  🔮 Start Game
-                </span>
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {isDreamingOpen && readViewMode === 'split' ? (
+                <button
+                  onClick={() => {
+                    if (soundEnabled) sfx.playTick();
+                    setIsDreamingOpen(false);
+                  }}
+                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-200 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm font-dota uppercase tracking-wider shrink-0"
+                >
+                  Close Vision
+                </button>
+              ) : (
+                <button
+                  onClick={triggerDreamingVision}
+                  className="relative overflow-hidden px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-950/75 to-teal-950/75 hover:from-emerald-900 hover:to-teal-900 border border-emerald-500/30 text-emerald-250 hover:text-white transition-all text-xs font-black tracking-wider uppercase flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] group shrink-0"
+                >
+                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)]" />
+                  <span className="relative z-10 flex items-center gap-1.5 font-dota">
+                    🔮 Start Game
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Split view: timeline + detail panel side by side */}
