@@ -2,6 +2,7 @@ import React from 'react';
 import { Trophy, Folder, FileText } from 'lucide-react';
 import { PortfolioEntry } from '../types';
 import PdfThumbnail from './PdfThumbnail';
+import CardTitle from './CardTitle';
 
 interface CardProps {
   entry: PortfolioEntry;
@@ -62,8 +63,8 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
           
           {/* Center Details Block (title only, bigger) */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-black dark:text-slate-100 text-slate-800 transition-colors line-clamp-1">
-              {entry.title}
+            <h3 className="text-lg font-black dark:text-slate-100 text-slate-800 transition-colors flex items-center min-w-0 w-full">
+              <CardTitle title={entry.title} />
             </h3>
           </div>
 

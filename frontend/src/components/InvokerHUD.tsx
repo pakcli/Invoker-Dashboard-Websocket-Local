@@ -34,6 +34,10 @@ interface HUDProps {
   setMatchReadySimEnabled: (val: boolean) => void;
   dreamingShowAll: boolean;
   setDreamingShowAll: (val: boolean) => void;
+  dreamingIncludePast: boolean;
+  setDreamingIncludePast: (val: boolean) => void;
+  reverseTimeline: boolean;
+  setReverseTimeline: (val: boolean) => void;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -68,6 +72,10 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setMatchReadySimEnabled,
   dreamingShowAll,
   setDreamingShowAll,
+  dreamingIncludePast,
+  setDreamingIncludePast,
+  reverseTimeline,
+  setReverseTimeline,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
 
@@ -684,6 +692,67 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             }`}
           >
             Show All
+          </button>
+        </div>
+      </div>
+
+      {/* Planning: Time Range (Include Past) */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Planning: Time Range</span>
+          <span className="text-slate-400 font-bold capitalize">{dreamingIncludePast ? 'Past + Future' : 'Future Only'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setDreamingIncludePast(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !dreamingIncludePast
+                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Future Only
+          </button>
+          <button
+            onClick={() => setDreamingIncludePast(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              dreamingIncludePast
+                ? 'bg-[#15191e] text-amber-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            + Past
+          </button>
+        </div>
+      </div>
+
+
+      {/* Timeline Sort: view default | reverse (same timeline) */}
+      <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+        <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Timeline Sort</span>
+          <span className="text-slate-400 font-bold capitalize">{reverseTimeline ? 'Reverse' : 'Default'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+          <button
+            onClick={() => setReverseTimeline(false)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              !reverseTimeline
+                ? 'bg-[#15191e] text-blue-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            View Default
+          </button>
+          <button
+            onClick={() => setReverseTimeline(true)}
+            className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
+              reverseTimeline
+                ? 'bg-[#15191e] text-rose-400 shadow-sm border border-slate-800/50'
+                : 'text-slate-500 hover:text-slate-350'
+            }`}
+          >
+            Reverse (same timeline)
           </button>
         </div>
       </div>

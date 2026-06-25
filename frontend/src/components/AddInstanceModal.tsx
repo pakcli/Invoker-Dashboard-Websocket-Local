@@ -62,6 +62,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
   const [deletedFiles, setDeletedFiles] = useState<string[]>([]);
   const [thumbnailFilename, setThumbnailFilename] = useState<string>('');
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [pendingRename, setPendingRename] = useState<{ from: string; to: string } | null>(null);
 
   // File drag & drop states
   const [isDragOver, setIsDragOver] = useState(false);
@@ -89,11 +90,108 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     setShowDeleteConfirm(false);
     setDependencies([]);
     setDepQuery('');
+    setPendingRename(null);
   };
 
   const handleClose = () => {
     handleReset();
     onClose();
+  };
+
+  const parseFilenameProps = (filename: string) => {
+    const lastDot = filename.lastIndexOf('.');
+    const nameWithoutExt = lastDot !== -1 ? filename.substring(0, lastDot) : filename;
+    
+    const dateRegex = /(\d{4}-\d{2}-\d{2})|(\d{8})/g;
+    const matches = Array.from(nameWithoutExt.matchAll(dateRegex));
+    
+    const dates = matches.map(m => {
+      const str = m[0];
+      if (str.includes('-')) {
+        return str;
+      }
+      return `${str.substring(0, 4)}-${str.substring(4, 6)}-${str.substring(6, 8)}`;
+    });
+
+    let titlePart = nameWithoutExt;
+    matches.forEach(m => {
+      titlePart = titlePart.replace(m[0], '');
+    });
+
+    const titleCleaned = titlePart
+      .replace(/^[-_]+|[-_]+$/g, '')
+      .replace(/[-_]+/g, ' ')
+      .trim();
+
+    const titleFormatted = titleCleaned
+      ? titleCleaned.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      : '';
+
+    return {
+      title: titleFormatted,
+      dateStart: dates[0] || null,
+      dateEnd: dates[1] || null
+    };
+  };
+
+  const formatPropertiesToFilename = (titleStr: string, start: string, end: string, currentFile: string): string => {
+    const slug = titleStr.toLowerCase().replace(/[^a-z0-9_\-]/g, '-').replace(/-+/g, '-').replace(/^[-_]+|[-_]+$/g, '');
+    const lastDot = currentFile.lastIndexOf('.');
+    const ext = lastDot !== -1 ? currentFile.substring(lastDot) : '';
+    
+    const cleanDate = (dStr: string) => {
+      return dStr.replace(/-/g, '').trim();
+    };
+
+    const parts: string[] = [];
+    if (start.trim()) {
+      parts.push(cleanDate(start));
+    }
+    if (slug) {
+      parts.push(slug);
+    }
+    if (end.trim()) {
+      parts.push(cleanDate(end));
+    }
+
+    return parts.join('_') + ext;
+  };
+
+  const handleRenameThumbnail = () => {
+    if (!thumbnailFilename) return;
+    if (!title.trim()) {
+      alert('Instance Title is required to rename the thumbnail!');
+      return;
+    }
+
+    const newName = formatPropertiesToFilename(title, dateStart, dateEnd, thumbnailFilename);
+
+    if (newName === thumbnailFilename) {
+      return;
+    }
+
+    if (existingFiles.includes(thumbnailFilename)) {
+      setPendingRename(prev => {
+        if (prev && prev.to === thumbnailFilename) {
+          return { from: prev.from, to: newName };
+        }
+        return { from: thumbnailFilename, to: newName };
+      });
+      setExistingFiles(prev => prev.map(f => f === thumbnailFilename ? newName : f));
+      setThumbnailFilename(newName);
+    } else {
+      const fileIdx = selectedFiles.findIndex(f => f.name === thumbnailFilename);
+      if (fileIdx !== -1) {
+        const origFile = selectedFiles[fileIdx];
+        const renamedFile = new File([origFile], newName, { type: origFile.type });
+        setSelectedFiles(prev => {
+          const next = [...prev];
+          next[fileIdx] = renamedFile;
+          return next;
+        });
+        setThumbnailFilename(newName);
+      }
+    }
   };
 
   const isEditMode = !!editEntry;
@@ -170,13 +268,19 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
         const parts = editEntry.folderPath.replace(/\\/g, '/').split('/');
         const origFolder = parts[parts.length - 1] || '';
         const cat = editEntry.source;
-        setPreviewBlobUrl(`/api/media/${cat}/${origFolder}/${thumbnailFilename}`);
+        
+        // Use the old name if the rename is pending on the server
+        const actualFilenameOnServer = pendingRename && pendingRename.to === thumbnailFilename
+          ? pendingRename.from
+          : thumbnailFilename;
+
+        setPreviewBlobUrl(`/api/media/${cat}/${origFolder}/${actualFilenameOnServer}`);
         return;
       }
     }
 
     setPreviewBlobUrl(null);
-  }, [thumbnailFilename, selectedFiles, existingFiles, editEntry]);
+  }, [thumbnailFilename, selectedFiles, existingFiles, editEntry, pendingRename]);
 
   const handleSelectCategory = (cat: 'proj' | 'cert' | 'item' | 'achv') => {
     setCategory(cat);
@@ -259,13 +363,6 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
       const generated = val.toLowerCase().replace(/[^a-z0-9_\-]/g, '-').replace(/-+/g, '-').replace(/^[-_]+|[-_]+$/g, '');
       setFolderName(generated);
     }
-  };
-
-  const handleSetAsTitle = (filename: string) => {
-    const lastDot = filename.lastIndexOf('.');
-    const baseName = lastDot !== -1 ? filename.substring(0, lastDot) : filename;
-    const cleanTitle = baseName.replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
-    handleTitleChange(cleanTitle);
   };
 
   const processFile = async (file: File) => {
@@ -351,6 +448,11 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     // Add main thumbnail choice
     if (thumbnailFilename) {
       formData.append('thumbnailFilename', thumbnailFilename);
+    }
+
+    if (pendingRename) {
+      formData.append('renameFrom', pendingRename.from);
+      formData.append('renameTo', pendingRename.to);
     }
 
     if (isEditMode && editEntry) {
@@ -730,14 +832,65 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                               )}
                             </div>
                             
-                            <div className="flex items-center gap-3 shrink-0 ml-4">
-                              <button
-                                type="button"
-                                onClick={() => handleSetAsTitle(filename)}
-                                className="text-emerald-500 hover:text-emerald-450 text-[10px] uppercase font-bold hover:underline"
-                              >
-                                Set Title
-                              </button>
+                            <div className="flex items-center gap-3 shrink-0 ml-4 font-sans">
+                              {(() => {
+                                const parsed = parseFilenameProps(filename);
+                                return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={!parsed.title}
+                                      onClick={() => {
+                                        if (parsed.title) {
+                                          handleTitleChange(parsed.title);
+                                        }
+                                      }}
+                                      className={`text-[10px] uppercase font-bold transition-colors ${
+                                        parsed.title
+                                          ? 'text-emerald-500 hover:text-emerald-450 cursor-pointer hover:underline'
+                                          : 'text-slate-650 cursor-not-allowed'
+                                      }`}
+                                      title={parsed.title ? `Set Title to: "${parsed.title}"` : 'No title data in filename'}
+                                    >
+                                      Set Title
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!parsed.dateStart}
+                                      onClick={() => {
+                                        if (parsed.dateStart) {
+                                          setDateStart(parsed.dateStart);
+                                        }
+                                      }}
+                                      className={`text-[10px] uppercase font-bold transition-colors ${
+                                        parsed.dateStart
+                                          ? 'text-cyan-450 hover:text-cyan-350 cursor-pointer hover:underline'
+                                          : 'text-slate-650 cursor-not-allowed'
+                                      }`}
+                                      title={parsed.dateStart ? `Set Date Start to: ${parsed.dateStart}` : 'No start date data in filename'}
+                                    >
+                                      Set Date Start
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!parsed.dateEnd}
+                                      onClick={() => {
+                                        if (parsed.dateEnd) {
+                                          setDateEnd(parsed.dateEnd);
+                                        }
+                                      }}
+                                      className={`text-[10px] uppercase font-bold transition-colors ${
+                                        parsed.dateEnd
+                                          ? 'text-fuchsia-450 hover:text-fuchsia-350 cursor-pointer hover:underline'
+                                          : 'text-slate-650 cursor-not-allowed'
+                                      }`}
+                                      title={parsed.dateEnd ? `Set Date End to: ${parsed.dateEnd}` : 'No end date data in filename'}
+                                    >
+                                      Set Date End
+                                    </button>
+                                  </>
+                                );
+                              })()}
                               {isMainable && !isMain && (
                                 <button
                                   type="button"
@@ -781,13 +934,64 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                           </div>
                           
                           <div className="flex items-center gap-3 shrink-0 ml-4 font-sans">
-                            <button
-                              type="button"
-                              onClick={() => handleSetAsTitle(file.name)}
-                              className="text-emerald-500 hover:text-emerald-450 text-[10px] uppercase font-bold hover:underline"
-                            >
-                              Set Title
-                            </button>
+                            {(() => {
+                              const parsed = parseFilenameProps(file.name);
+                              return (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={!parsed.title}
+                                      onClick={() => {
+                                        if (parsed.title) {
+                                          handleTitleChange(parsed.title);
+                                        }
+                                      }}
+                                      className={`text-[10px] uppercase font-bold transition-colors ${
+                                        parsed.title
+                                          ? 'text-emerald-500 hover:text-emerald-450 cursor-pointer hover:underline'
+                                          : 'text-slate-650 cursor-not-allowed'
+                                      }`}
+                                      title={parsed.title ? `Set Title to: "${parsed.title}"` : 'No title data in filename'}
+                                    >
+                                      Set Title
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!parsed.dateStart}
+                                      onClick={() => {
+                                        if (parsed.dateStart) {
+                                          setDateStart(parsed.dateStart);
+                                        }
+                                      }}
+                                      className={`text-[10px] uppercase font-bold transition-colors ${
+                                        parsed.dateStart
+                                          ? 'text-cyan-450 hover:text-cyan-350 cursor-pointer hover:underline'
+                                          : 'text-slate-650 cursor-not-allowed'
+                                      }`}
+                                      title={parsed.dateStart ? `Set Date Start to: ${parsed.dateStart}` : 'No start date data in filename'}
+                                    >
+                                      Set Date Start
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!parsed.dateEnd}
+                                      onClick={() => {
+                                        if (parsed.dateEnd) {
+                                          setDateEnd(parsed.dateEnd);
+                                        }
+                                      }}
+                                      className={`text-[10px] uppercase font-bold transition-colors ${
+                                        parsed.dateEnd
+                                          ? 'text-fuchsia-450 hover:text-fuchsia-350 cursor-pointer hover:underline'
+                                          : 'text-slate-650 cursor-not-allowed'
+                                      }`}
+                                      title={parsed.dateEnd ? `Set Date End to: ${parsed.dateEnd}` : 'No end date data in filename'}
+                                    >
+                                      Set Date End
+                                    </button>
+                                  </>
+                              );
+                            })()}
                             {isMainable && !isMain && (
                               <button
                                 type="button"
@@ -846,7 +1050,24 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                 
                 {/* Title */}
                 <div className="flex flex-col gap-1 col-span-2">
-                  <label className="text-[10px] uppercase tracking-wider text-slate-500">Instance Title *</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] uppercase tracking-wider text-slate-500">Instance Title *</label>
+                    {(() => {
+                      if (!thumbnailFilename) return null;
+                      const targetName = formatPropertiesToFilename(title, dateStart, dateEnd, thumbnailFilename);
+                      if (!targetName || targetName === thumbnailFilename) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleRenameThumbnail}
+                          className="text-[9px] uppercase tracking-wider font-extrabold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer select-none"
+                          title={`Rename thumbnail "${thumbnailFilename}" to "${targetName}"`}
+                        >
+                          Rename Thumbnail to: <span className="font-mono lowercase font-normal">{targetName}</span>
+                        </button>
+                      );
+                    })()}
+                  </div>
                   <input
                     type="text"
                     value={title}

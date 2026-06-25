@@ -217,6 +217,22 @@ def create_entry():
 
     os.makedirs(target_dir, exist_ok=True)
 
+    # Handle explicit file renaming if requested
+    rename_from = request.form.get('renameFrom')
+    rename_to = request.form.get('renameTo')
+    if rename_from and rename_to and rename_from != rename_to:
+        rename_from_san = re.sub(r'[^a-zA-Z0-9_\-\.]', '', rename_from)
+        rename_to_san = re.sub(r'[^a-zA-Z0-9_\-\.]', '', rename_to)
+        if rename_from_san and rename_to_san and rename_from_san != "index.md" and rename_to_san != "index.md":
+            old_filepath = os.path.join(target_dir, rename_from_san)
+            new_filepath = os.path.join(target_dir, rename_to_san)
+            if os.path.isfile(old_filepath):
+                try:
+                    os.rename(old_filepath, new_filepath)
+                    print(f"Renamed file {rename_from_san} to {rename_to_san}")
+                except Exception as e:
+                    print(f"Error renaming file {rename_from_san} to {rename_to_san}: {e}")
+
     # Save index.md
     md_file_path = os.path.join(target_dir, "index.md")
     try:
@@ -252,7 +268,10 @@ def create_entry():
             if ext in ['.png', '.jpg', '.jpeg', '.pdf']:
                 # Determine target filename: if this file was selected as main thumbnail
                 if orig_filename == thumbnail_filename:
-                    save_name = f"thumbnail{ext}"
+                    if folder_name.lower() in orig_filename.lower():
+                        save_name = orig_filename
+                    else:
+                        save_name = f"thumbnail{ext}"
                     # First delete any existing thumbnail files to prevent duplicates
                     for name in ["thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"]:
                         tp = os.path.join(target_dir, name)
@@ -276,20 +295,24 @@ def create_entry():
         ext = os.path.splitext(existing_sanitized)[1].lower()
         if ext in ['.png', '.jpg', '.jpeg', '.pdf']:
             old_path = os.path.join(target_dir, existing_sanitized)
-            new_path = os.path.join(target_dir, f"thumbnail{ext}")
-            if os.path.isfile(old_path) and existing_sanitized != f"thumbnail{ext}":
-                # First delete any existing thumbnail files to prevent duplicates
-                for name in ["thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"]:
-                    tp = os.path.join(target_dir, name)
-                    if os.path.isfile(tp):
-                        try:
-                            os.remove(tp)
-                        except:
-                            pass
-                try:
-                    os.rename(old_path, new_path)
-                except Exception as e:
-                    print(f"Error renaming {existing_sanitized} to thumbnail{ext}: {e}")
+            # If the filename contains the folder name, we don't rename it to thumbnail
+            if folder_name.lower() in existing_sanitized.lower():
+                pass
+            else:
+                new_path = os.path.join(target_dir, f"thumbnail{ext}")
+                if os.path.isfile(old_path) and existing_sanitized != f"thumbnail{ext}":
+                    # First delete any existing thumbnail files to prevent duplicates
+                    for name in ["thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"]:
+                        tp = os.path.join(target_dir, name)
+                        if os.path.isfile(tp):
+                            try:
+                                os.remove(tp)
+                            except:
+                                pass
+                    try:
+                        os.rename(old_path, new_path)
+                    except Exception as e:
+                        print(f"Error renaming {existing_sanitized} to thumbnail{ext}: {e}")
 
     # Run scan to update database and broadcast WebSocket event
     try:

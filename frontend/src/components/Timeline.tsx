@@ -128,15 +128,23 @@ export const Timeline: React.FC<TimelineProps> = ({
             ? 0
             : (topIdx / (totalTop - 1) - 0.5) * portSpanB;
 
+          const isMainBelow = rectA.top > rectB.top;
+
           const xStart = (rectA.left - parentRect.left) + rectA.width / 2 + portOffsetA;
-          const yStart = (rectA.bottom - parentRect.top);
+          const yStart = isMainBelow
+            ? (rectA.top - parentRect.top)
+            : (rectA.bottom - parentRect.top);
 
           const xEnd = (rectB.left - parentRect.left) + rectB.width / 2 + portOffsetB;
-          const yEnd = (rectB.top - parentRect.top);
+          const yEnd = isMainBelow
+            ? (rectB.bottom - parentRect.top)
+            : (rectB.top - parentRect.top);
 
           const dy = Math.abs(yEnd - yStart) * 0.5;
+          const cpStart = isMainBelow ? (yStart - dy) : (yStart + dy);
+          const cpEnd = isMainBelow ? (yEnd + dy) : (yEnd - dy);
           // S-curve bezier
-          const d = `M ${xStart} ${yStart} C ${xStart} ${yStart + dy}, ${xEnd} ${yEnd - dy}, ${xEnd} ${yEnd}`;
+          const d = `M ${xStart} ${yStart} C ${xStart} ${cpStart}, ${xEnd} ${cpEnd}, ${xEnd} ${yEnd}`;
 
           newConnections.push({
             id: `${entry.id}-${depEntry.id}`,
@@ -238,6 +246,11 @@ export const Timeline: React.FC<TimelineProps> = ({
 
     if (!cardElement) return null;
 
+    // Overdue = past date + not done yet
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isDoneEntry = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
+    const isOverdue = !isDoneEntry && !!entry.datestart && entry.datestart < todayStr;
+
     // Focus mode visual roles
     const isFocusActive = nodeLineMode === 'focus' || nodeLineMode === 'focus-no-offset';
     const isFocused = isFocusActive && hoveredCardId === entry.id;
@@ -293,6 +306,15 @@ export const Timeline: React.FC<TimelineProps> = ({
           <div className="absolute -inset-[2px] rounded-lg pointer-events-none z-10"
             style={{
               boxShadow: `inset 0 0 0 2px rgba(148,163,184,0.35), 0 0 14px rgba(148,163,184,0.12)`,
+            }}
+          />
+        )}
+        {/* Overdue ring: past + not done */}
+        {isOverdue && (
+          <div
+            className="absolute -inset-[1px] rounded-lg pointer-events-none z-10"
+            style={{
+              boxShadow: 'inset 0 0 0 1px rgba(180,80,30,0.45), 0 0 12px rgba(180,80,30,0.18)',
             }}
           />
         )}

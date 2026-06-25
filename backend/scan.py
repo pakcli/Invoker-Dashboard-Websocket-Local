@@ -90,7 +90,7 @@ def scan_directory(watch_dir):
                 img_name = ""
                 if os.path.exists(entry_path):
                     for filename in os.listdir(entry_path):
-                        if filename.lower() in ["img.png", "img.jpg", "img.jpeg", "img.pdf", "thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"]:
+                        if filename.lower() in ["img.png", "img.jpg", "img.jpeg", "img.pdf", "thumbnail.png", "thumbnail.jpg", "thumbnail.jpeg", "thumbnail.pdf"] or entry_name.lower() in filename.lower():
                             img_name = filename
                             break
                     if not img_name:

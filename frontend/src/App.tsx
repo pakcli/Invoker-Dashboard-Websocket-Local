@@ -132,6 +132,14 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem('dreamingShowAll');
     return saved !== null ? saved === 'true' : false;
   });
+  const [dreamingIncludePast, setDreamingIncludePast] = useState<boolean>(() => {
+    const saved = localStorage.getItem('dreamingIncludePast');
+    return saved !== null ? saved === 'true' : false;
+  });
+  const [reverseTimeline, setReverseTimeline] = useState<boolean>(() => {
+    const saved = localStorage.getItem('reverseTimeline');
+    return saved !== null ? saved === 'true' : false;
+  });
   const [matchReadySimEnabled, setMatchReadySimEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('matchReadySimEnabled');
     return saved !== null ? saved === 'true' : true;
@@ -165,6 +173,20 @@ export const App: React.FC = () => {
     return localStorage.getItem('clickToEdit') === 'true';
   });
   const [isEditingInline, setIsEditingInline] = useState<boolean>(false);
+
+  // Temporary view settings for Tegak Lurus panel modal (they follow/default to the sidebar HUD settings when opened)
+  const [tempDreamingShowAll, setTempDreamingShowAll] = useState(dreamingShowAll);
+  const [tempDreamingIncludePast, setTempDreamingIncludePast] = useState(dreamingIncludePast);
+  const [tempReverseTimeline, setTempReverseTimeline] = useState(reverseTimeline);
+
+  // Synchronize temporary Tegak Lurus settings with master sidebar settings when the modal opens
+  useEffect(() => {
+    if (isDreamingOpen) {
+      setTempDreamingShowAll(dreamingShowAll);
+      setTempDreamingIncludePast(dreamingIncludePast);
+      setTempReverseTimeline(!reverseTimeline);
+    }
+  }, [isDreamingOpen, dreamingShowAll, dreamingIncludePast, reverseTimeline]);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -286,12 +308,14 @@ export const App: React.FC = () => {
     localStorage.setItem('clickToEdit', String(clickToEdit));
     localStorage.setItem('matchReadySimEnabled', String(matchReadySimEnabled));
     localStorage.setItem('dreamingShowAll', String(dreamingShowAll));
+    localStorage.setItem('dreamingIncludePast', String(dreamingIncludePast));
+    localStorage.setItem('reverseTimeline', String(reverseTimeline));
     if (activeStatFilter === null) {
       localStorage.removeItem('activeStatFilter');
     } else {
       localStorage.setItem('activeStatFilter', activeStatFilter);
     }
-  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode, clickToEdit, matchReadySimEnabled, dreamingShowAll]);
+  }, [sidebarPosition, sidebarCollapsed, mode, subFilters, orbs, activeCombo, soundEnabled, volume, activeStatFilter, formalMode, thinnerCard, isAddPopupOpen, checkedCards, statsMode, clickToEdit, matchReadySimEnabled, dreamingShowAll, dreamingIncludePast, reverseTimeline]);
 
   // Initial fetch and WebSocket listener
   useEffect(() => {
@@ -419,8 +443,12 @@ export const App: React.FC = () => {
     sfx.setVolume(volume);
   }, [soundEnabled, volume]);
 
-  // Helper to extract upcoming entries from today onwards
-  const getUpcomingEntriesList = () => {
+  // Helper to extract planning entries (upcoming and optionally past)
+  const getUpcomingEntriesList = (
+    includePast = dreamingIncludePast,
+    reverse = reverseTimeline,
+    showAll = dreamingShowAll
+  ) => {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -429,12 +457,19 @@ export const App: React.FC = () => {
 
     return entries.filter((entry) => {
       if (!entry.datestart) return false;
-      if (!dreamingShowAll) {
+      if (!showAll) {
         const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
         if (isDone) return false;
       }
-      return entry.datestart >= todayStr;
-    }).sort((a, b) => a.datestart.localeCompare(b.datestart));
+      // Time range filter
+      if (!includePast) {
+        return entry.datestart >= todayStr;
+      }
+      return true;
+    }).sort((a, b) => {
+      const cmp = a.datestart.localeCompare(b.datestart);
+      return reverse ? -cmp : cmp;
+    });
   };
 
   const triggerDreamingVision = () => {
@@ -471,7 +506,11 @@ export const App: React.FC = () => {
     const activeTimers: any[] = [];
 
     if (isDreamingOpen) {
-      const upcoming = getUpcomingEntriesList();
+      const upcoming = getUpcomingEntriesList(
+        tempDreamingIncludePast,
+        tempReverseTimeline,
+        tempDreamingShowAll
+      );
 
       if (matchReadySimEnabled && isDreamingSequenceActive && upcoming.length > 0) {
         setRevealedCardIds({});
@@ -511,7 +550,16 @@ export const App: React.FC = () => {
       if (startTimeoutId) clearTimeout(startTimeoutId);
       activeTimers.forEach(timerId => clearTimeout(timerId));
     };
-  }, [isDreamingOpen, isDreamingSequenceActive, matchReadySimEnabled, soundEnabled, entries]);
+  }, [
+    isDreamingOpen,
+    isDreamingSequenceActive,
+    matchReadySimEnabled,
+    soundEnabled,
+    entries,
+    tempDreamingIncludePast,
+    tempReverseTimeline,
+    tempDreamingShowAll
+  ]);
 
   const handleOpenFolder = async (folderPath: string) => {
     if (soundEnabled) sfx.playTick();
@@ -580,7 +628,7 @@ export const App: React.FC = () => {
 
   // Filter entries incorporating the interactive stat card override
   const getFilteredEntries = () => {
-    return entriesForStats.filter(entry => {
+    const list = entriesForStats.filter(entry => {
       if (activeStatFilter) {
         const skillStr = entry.skill?.toLowerCase() || '';
         if (activeStatFilter === 'quas' && !skillStr.includes('q')) return false;
@@ -591,6 +639,10 @@ export const App: React.FC = () => {
       }
       return true;
     });
+    if (reverseTimeline) {
+      return [...list].reverse();
+    }
+    return list;
   };
 
   const filteredEntries = getFilteredEntries();
@@ -835,6 +887,10 @@ export const App: React.FC = () => {
               setMatchReadySimEnabled={setMatchReadySimEnabled}
               dreamingShowAll={dreamingShowAll}
               setDreamingShowAll={setDreamingShowAll}
+              dreamingIncludePast={dreamingIncludePast}
+              setDreamingIncludePast={setDreamingIncludePast}
+              reverseTimeline={reverseTimeline}
+              setReverseTimeline={setReverseTimeline}
             />
           </aside>
         )}
@@ -1482,7 +1538,7 @@ export const App: React.FC = () => {
       />
 
       {/* Dreaming Modal Popup */}
-      {isDreamingOpen && readViewMode === 'popup' && (
+      {isDreamingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
           {/* Static cosmic dream background glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_65%)] pointer-events-none" />
@@ -1497,9 +1553,9 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => {
                       if (soundEnabled) sfx.playTick();
-                      setDreamingShowAll(false);
+                      setTempDreamingShowAll(false);
                     }}
-                    className={`px-3 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-widest ${!dreamingShowAll
+                    className={`px-3 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-widest ${!tempDreamingShowAll
                         ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
                         : 'text-slate-500 hover:text-slate-350'
                       }`}
@@ -1509,9 +1565,9 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => {
                       if (soundEnabled) sfx.playTick();
-                      setDreamingShowAll(true);
+                      setTempDreamingShowAll(true);
                     }}
-                    className={`px-3 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-widest ${dreamingShowAll
+                    className={`px-3 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-widest ${tempDreamingShowAll
                         ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
                         : 'text-slate-500 hover:text-slate-350'
                       }`}
@@ -1545,7 +1601,7 @@ export const App: React.FC = () => {
             {/* Modal Body: Scrollable list of cards in a chronological vertical timeline section */}
             <div className="flex-1 overflow-y-auto p-8 bg-slate-950/20">
               {(() => {
-                const upcomingEntries = getUpcomingEntriesList();
+                const upcomingEntries = getUpcomingEntriesList(tempDreamingIncludePast, tempReverseTimeline, tempDreamingShowAll);
                 const today = new Date();
                 const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -1582,7 +1638,10 @@ export const App: React.FC = () => {
                   entriesByYear[y].push(entry);
                 });
 
-                const sortedYears = Object.keys(entriesByYear).sort();
+                const isLatest = tempReverseTimeline;
+                const sortedYears = Object.keys(entriesByYear).sort(
+                  isLatest ? (a, b) => b.localeCompare(a) : (a, b) => a.localeCompare(b)
+                );
 
                 return (
                   <div className="w-full flex flex-col gap-8 py-2">
@@ -1597,7 +1656,7 @@ export const App: React.FC = () => {
                           </div>
 
                           {/* Cards List in this year section */}
-                          <div className="flex flex-col gap-8 w-full">
+                          <div className="grid grid-cols-1 min-[640px]:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
                             {yearEntries.map((entry) => {
                               const cardProps = {
                                 key: `dream_${entry.id}`,
@@ -1626,15 +1685,27 @@ export const App: React.FC = () => {
                                 }
                               };
 
+                              const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
+                              const isOverdue = !isDone && !!entry.datestart && entry.datestart < todayStr;
+
                               return (
                                 <div key={`dream_item_${entry.id}`} className="w-full flex flex-col items-start gap-2.5">
-                                  {/* Date Badge */}
-                                  <span className="text-[10px] font-bold text-slate-400 bg-slate-900/60 px-2.5 py-0.5 rounded border border-slate-800/80 select-none">
+                                  {/* Date Badge — amber tint if overdue */}
+                                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded border select-none ${
+                                    isOverdue
+                                      ? 'text-amber-500/80 bg-amber-950/30 border-amber-900/40'
+                                      : 'text-slate-400 bg-slate-900/60 border-slate-800/80'
+                                  }`}>
+                                    {isOverdue && <span className="mr-1 opacity-70">⏳</span>}
                                     {formatDate(entry.datestart)}
                                   </span>
 
-                                  {/* Flippable Card Container */}
-                                  <div className="w-full">
+                                  {/* Flippable Card Container — glowing border if overdue undone */}
+                                  <div className={`w-full rounded-xl transition-all ${
+                                    isOverdue
+                                      ? 'ring-1 ring-orange-900/60 shadow-[0_0_14px_rgba(180,80,30,0.22)]'
+                                      : ''
+                                  }`}>
                                     <FlippableCard
                                       key={`dream_flip_${entry.id}`}
                                       isRevealed={isRevealed}
@@ -1656,11 +1727,61 @@ export const App: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-emerald-500/20 flex justify-between items-center bg-emerald-950/10">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                Invoker Portfolio Engine v1.0.0
-              </span>
-              <div className="flex gap-2">
+            <div className="p-4 border-t border-emerald-500/20 flex items-center gap-4 bg-emerald-950/10">
+              {/* Left: new toggles */}
+              <div className="flex items-center gap-2">
+                {/* Include Past toggle */}
+                <div className="grid grid-cols-2 gap-0.5 p-0.5 bg-slate-950/80 border border-slate-800/80 rounded-lg select-none">
+                  <button
+                    onClick={() => { if (soundEnabled) sfx.playTick(); setTempDreamingIncludePast(false); }}
+                    className={`px-2.5 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-wider ${
+                      !tempDreamingIncludePast
+                        ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-350'
+                    }`}
+                  >
+                    Future Only
+                  </button>
+                  <button
+                    onClick={() => { if (soundEnabled) sfx.playTick(); setTempDreamingIncludePast(true); }}
+                    className={`px-2.5 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-wider ${
+                      tempDreamingIncludePast
+                        ? 'bg-[#15191e] text-amber-400 shadow-sm border border-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-350'
+                    }`}
+                  >
+                    + Past
+                  </button>
+                </div>
+
+
+                {/* View Default | Reverse (same timeline) toggle */}
+                <div className="grid grid-cols-2 gap-0.5 p-0.5 bg-slate-950/80 border border-slate-800/80 rounded-lg select-none">
+                  <button
+                    onClick={() => { if (soundEnabled) sfx.playTick(); setTempReverseTimeline(true); }}
+                    className={`px-2.5 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-wider ${
+                      tempReverseTimeline
+                        ? 'bg-[#15191e] text-blue-400 shadow-sm border border-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-350'
+                    }`}
+                  >
+                    View Default
+                  </button>
+                  <button
+                    onClick={() => { if (soundEnabled) sfx.playTick(); setTempReverseTimeline(false); }}
+                    className={`px-2.5 py-1 text-[9px] font-bold rounded transition-all uppercase tracking-wider ${
+                      !tempReverseTimeline
+                        ? 'bg-[#15191e] text-rose-400 shadow-sm border border-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-350'
+                    }`}
+                  >
+                    Reverse (same timeline)
+                  </button>
+                </div>
+              </div>
+
+              {/* Right: action buttons */}
+              <div className="flex gap-2 ml-auto">
                 <button
                   onClick={() => {
                     if (soundEnabled) sfx.playTick();
