@@ -42,6 +42,7 @@ interface HUDProps {
   setReverseTimeline: (val: boolean) => void;
   entriesForStats: PortfolioEntry[];
   onSelectCombo: (combo: string) => void;
+  shownCount: number;
 }
 
 export const InvokerHUD: React.FC<HUDProps> = ({
@@ -84,6 +85,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setReverseTimeline,
   entriesForStats,
   onSelectCombo,
+  shownCount,
 }) => {
   const [keybindsExpanded, setKeybindsExpanded] = useState(false);
   const [combosExpanded, setCombosExpanded] = useState(false);
@@ -230,14 +232,19 @@ export const InvokerHUD: React.FC<HUDProps> = ({
           <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap">
             HUD Statistics
           </label>
-          <button
-            onClick={() => setActiveStatFilter(null)}
-            className={`text-[8px] text-red-500 hover:underline font-bold whitespace-nowrap transition-all duration-200 ${
-              activeStatFilter ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'
-            }`}
-          >
-            Clear Filter
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded whitespace-nowrap">
+              {shownCount} shown
+            </span>
+            <button
+              onClick={() => setActiveStatFilter(null)}
+              className={`text-[8px] text-red-500 hover:underline font-bold whitespace-nowrap transition-all duration-200 ${
+                activeStatFilter ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'
+              }`}
+            >
+              Clear
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
           <div
@@ -495,7 +502,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
           onClick={onInvoke}
           disabled={orbs.length < 3}
           className={`flex-1 py-2 text-xs font-bold rounded-lg text-white transition-all shadow-md ${orbs.length === 3
-            ? 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_15px_rgba(74,222,128,0.4)] invoke-btn-glow'
+            ? 'dota-accept-btn invoke-btn-glow shadow-[0_0_15px_rgba(74,222,128,0.4)]'
             : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800'
             }`}
         >
@@ -539,14 +546,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>HUD Mode</span>
-          <span className="text-slate-400 font-bold capitalize">{formalMode ? 'Formal' : 'Dota 2'}</span>
+          <span className={`font-bold capitalize ${formalMode ? 'text-emerald-400' : 'text-white'}`}>{formalMode ? 'Formal' : 'Dota 2'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
             onClick={() => setFormalMode(true)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               formalMode
-                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -556,7 +563,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setFormalMode(false)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               !formalMode
-                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -569,24 +576,29 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>HUD Stats Mode</span>
-          <span className="text-slate-400 font-bold capitalize">
+          <span className={`font-bold capitalize ${statsMode === 'combined' ? 'text-emerald-400' : 'text-white'}`}>
             {statsMode === 'combined' ? 'Done + Upcoming' : statsMode}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
-          {(['done', 'upcoming', 'combined'] as const).map((sm) => (
-            <button
-              key={sm}
-              onClick={() => setStatsMode(sm)}
-              className={`py-1.5 text-[9px] font-bold rounded capitalize transition-all ${
-                statsMode === sm
-                  ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
-                  : 'text-slate-500 hover:text-slate-350'
-              }`}
-            >
-              {sm === 'combined' ? 'Done + x' : sm}
-            </button>
-          ))}
+          {(['done', 'upcoming', 'combined'] as const).map((sm) => {
+            const isSelected = statsMode === sm;
+            const isDefault = sm === 'combined';
+            const textColorClass = isSelected
+              ? (isDefault ? 'text-emerald-400' : 'text-white')
+              : 'text-slate-500 hover:text-slate-350';
+            return (
+              <button
+                key={sm}
+                onClick={() => setStatsMode(sm)}
+                className={`py-1.5 text-[9px] font-bold rounded capitalize transition-all ${
+                  isSelected ? 'bg-[#15191e] shadow-sm border border-slate-800/50' : ''
+                } ${textColorClass}`}
+              >
+                {sm === 'combined' ? 'Done + x' : sm}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -594,14 +606,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Thinner Card Mode</span>
-          <span className="text-slate-400 font-bold capitalize">{thinnerCard ? 'Thinner (4:1)' : 'Standard (4:3)'}</span>
+          <span className={`font-bold capitalize ${!thinnerCard ? 'text-emerald-400' : 'text-white'}`}>{thinnerCard ? 'Thinner (4:1)' : 'Standard (4:3)'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
             onClick={() => setThinnerCard(false)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               !thinnerCard
-                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -611,7 +623,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setThinnerCard(true)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               thinnerCard
-                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -624,7 +636,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Node Lines</span>
-          <span className="text-slate-400 font-bold capitalize">
+          <span className={`font-bold capitalize ${nodeLineMode === 'all' ? 'text-emerald-400' : 'text-white'}`}>
             {nodeLineMode === 'focus' ? 'Focus' : nodeLineMode === 'focus-no-offset' ? 'Clean' : 'Show All'}
           </span>
         </div>
@@ -633,7 +645,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setNodeLineMode('focus')}
             className={`py-1.5 text-[9px] font-bold rounded capitalize transition-all ${
               nodeLineMode === 'focus'
-                ? 'bg-[#15191e] text-fuchsia-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -643,7 +655,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setNodeLineMode('focus-no-offset')}
             className={`py-1.5 text-[9px] font-bold rounded capitalize transition-all ${
               nodeLineMode === 'focus-no-offset'
-                ? 'bg-[#15191e] text-purple-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -653,7 +665,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setNodeLineMode('all')}
             className={`py-1.5 text-[9px] font-bold rounded capitalize transition-all ${
               nodeLineMode === 'all'
-                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -666,7 +678,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Read View</span>
-          <span className="text-slate-400 font-bold capitalize">{readViewMode === 'split' ? 'Split' : 'Popup'}</span>
+          <span className={`font-bold capitalize ${readViewMode === 'popup' ? 'text-emerald-400' : 'text-white'}`}>{readViewMode === 'split' ? 'Split' : 'Popup'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
@@ -683,7 +695,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setReadViewMode('split')}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               readViewMode === 'split'
-                ? 'bg-[#15191e] text-purple-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -697,14 +709,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
         <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
           <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             <span>Split Panel Size</span>
-            <span className="text-slate-400 font-bold">{splitPanelSize === '25' ? '25%' : '50%'}</span>
+            <span className={`font-bold capitalize ${splitPanelSize === '50' ? 'text-emerald-400' : 'text-white'}`}>{splitPanelSize === '25' ? '25%' : '50%'}</span>
           </div>
           <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
             <button
               onClick={() => setSplitPanelSize('25')}
               className={`py-1.5 text-[10px] font-bold rounded transition-all ${
                 splitPanelSize === '25'
-                  ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
+                  ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                   : 'text-slate-500 hover:text-slate-350'
               }`}
             >
@@ -714,7 +726,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
               onClick={() => setSplitPanelSize('50')}
               className={`py-1.5 text-[10px] font-bold rounded transition-all ${
                 splitPanelSize === '50'
-                  ? 'bg-[#15191e] text-purple-400 shadow-sm border border-slate-800/50'
+                  ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                   : 'text-slate-500 hover:text-slate-350'
               }`}
             >
@@ -728,7 +740,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Click on Card</span>
-          <span className="text-slate-400 font-bold capitalize">{clickToEdit ? 'Direct Edit' : 'Read View'}</span>
+          <span className={`font-bold capitalize ${!clickToEdit ? 'text-emerald-400' : 'text-white'}`}>{clickToEdit ? 'Direct Edit' : 'Read View'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
@@ -745,7 +757,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setClickToEdit(true)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               clickToEdit
-                ? 'bg-[#15191e] text-amber-500 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -758,14 +770,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Match Ready Anim</span>
-          <span className="text-slate-400 font-bold capitalize">{matchReadySimEnabled ? 'Enabled' : 'Disabled'}</span>
+          <span className={`font-bold capitalize ${matchReadySimEnabled ? 'text-emerald-400' : 'text-white'}`}>{matchReadySimEnabled ? 'Enabled' : 'Disabled'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
             onClick={() => setMatchReadySimEnabled(false)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               !matchReadySimEnabled
-                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -775,7 +787,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setMatchReadySimEnabled(true)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               matchReadySimEnabled
-                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -788,14 +800,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Planning Default</span>
-          <span className="text-slate-400 font-bold capitalize">{dreamingShowAll ? 'Show All' : 'Undone Only'}</span>
+          <span className={`font-bold capitalize ${!dreamingShowAll ? 'text-emerald-400' : 'text-white'}`}>{dreamingShowAll ? 'Show All' : 'Undone Only'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
             onClick={() => setDreamingShowAll(false)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               !dreamingShowAll
-                ? 'bg-[#15191e] text-emerald-450 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -805,7 +817,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setDreamingShowAll(true)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               dreamingShowAll
-                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -818,14 +830,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Planning: Time Range</span>
-          <span className="text-slate-400 font-bold capitalize">{dreamingIncludePast ? 'Past + Future' : 'Future Only'}</span>
+          <span className={`font-bold capitalize ${!dreamingIncludePast ? 'text-emerald-400' : 'text-white'}`}>{dreamingIncludePast ? 'Past + Future' : 'Future Only'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
             onClick={() => setDreamingIncludePast(false)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               !dreamingIncludePast
-                ? 'bg-[#15191e] text-cyan-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -835,7 +847,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setDreamingIncludePast(true)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               dreamingIncludePast
-                ? 'bg-[#15191e] text-amber-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -849,14 +861,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
         <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <span>Timeline Sort</span>
-          <span className="text-slate-400 font-bold capitalize">{reverseTimeline ? 'Reverse' : 'Default'}</span>
+          <span className={`font-bold capitalize ${!reverseTimeline ? 'text-emerald-400' : 'text-white'}`}>{reverseTimeline ? 'Reverse' : 'Default'}</span>
         </div>
         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
           <button
             onClick={() => setReverseTimeline(false)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               !reverseTimeline
-                ? 'bg-[#15191e] text-blue-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >
@@ -866,7 +878,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             onClick={() => setReverseTimeline(true)}
             className={`py-1.5 text-[10px] font-bold rounded capitalize transition-all ${
               reverseTimeline
-                ? 'bg-[#15191e] text-rose-400 shadow-sm border border-slate-800/50'
+                ? 'bg-[#15191e] text-white shadow-sm border border-slate-800/50'
                 : 'text-slate-500 hover:text-slate-350'
             }`}
           >

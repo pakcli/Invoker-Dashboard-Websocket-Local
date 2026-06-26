@@ -62,20 +62,23 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   const borderAndGlowClasses = isChecked
-    ? 'border-[#d4af50]/80 achievement-card-glow shadow-[0_0_20px_rgba(212,175,80,0.25)]'
+    ? 'dota-immortal-glow border-[#a3761a] hover:border-[#e4ae39] shadow-[0_0_20px_rgba(228,174,57,0.15)] pt-4'
     : 'border-emerald-500/80 achievement-card-green-glow shadow-[0_0_20px_rgba(16,185,129,0.25)]';
 
   const badgeClasses = isChecked 
-    ? 'bg-amber-500/5 text-[#d4af50] dark:text-[#d4af50]/90 border-[#d4af50]/20'
+    ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30'
     : 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20';
 
   return (
     <div 
       onClick={() => onMore(entry)}
       className={`bg-[#121418]/90 border-[3px] rounded-xl hover:border-slate-200/60 transition-all duration-300 group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${borderAndGlowClasses} ${
-        thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'h-[384px] p-5'
+        thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'h-[396px] p-5'
       }`}
     >
+      {/* Dota 2 Immortal Top Bar Indicator */}
+      {isChecked && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
+
       {/* Decorative background trophy icon */}
       <div className="absolute -right-4 -bottom-4 opacity-5 dark:opacity-[0.03]">
         <Trophy size={100} />
@@ -84,13 +87,13 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
       <div className="flex-1 flex flex-col min-h-0 relative z-10">
         <div className={`flex gap-3 items-center shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
           {/* Category Label Badge (far left) */}
-          <span className={`text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded border whitespace-nowrap shrink-0 ${badgeClasses}`}>
-            ACHIEVEMENT
+          <span className={`text-[10px] tracking-wider font-extrabold px-2 py-0.5 rounded border whitespace-nowrap shrink-0 uppercase ${badgeClasses}`}>
+            {isChecked ? 'IMMORTAL' : 'ACHIEVEMENT'}
           </span>
           
           {/* Center Details Block (title only, bigger) */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-black dark:text-slate-100 text-slate-800 transition-colors flex items-center min-w-0 w-full">
+            <h3 className={`text-lg font-black transition-colors flex items-center min-w-0 w-full ${isChecked ? 'text-white' : 'dark:text-slate-100 text-slate-800'}`}>
               <CardTitle title={entry.title} />
             </h3>
           </div>
@@ -112,16 +115,26 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
           {entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}
         </div>
 
+        {/* Rarity & Slot Info for Immortal */}
+        {isChecked && !thinnerCard && (
+          <div className="text-[10px] font-bold text-slate-400 flex gap-4 mb-2.5">
+            <span>Rarity: <span className="dota-immortal-text">Immortal</span></span>
+            <span>Slot: <span className="text-slate-350">Achievement</span></span>
+          </div>
+        )}
+
         {!thinnerCard && (
           entry.imgPath ? (
-            <div className="w-full flex-1 min-h-0 rounded overflow-hidden border border-amber-500/20 dark:border-slate-800 bg-slate-900/50 flex items-center justify-center mb-3">
+            <div className={`w-full flex-1 min-h-0 rounded overflow-hidden bg-slate-900/50 flex items-center justify-center mb-3 border ${
+              isChecked ? 'border-[#a3761a]/30' : 'border-amber-500/20 dark:border-slate-800'
+            }`}>
               {entry.imgPath.toLowerCase().endsWith('.pdf') ? (
                 <PdfThumbnail src={entry.imgPath} title={entry.title} />
               ) : (
                 <img 
                   src={entry.imgPath} 
                   alt={entry.title} 
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover animate-fadeIn"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}
@@ -133,6 +146,41 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
               No image preview available
             </div>
           )
+        )}
+
+        {/* Dota 2 Style Modifiers Section */}
+        {isChecked && !thinnerCard && (
+          <div className="mb-2.5 text-[10px] border-t border-[#a3761a]/25 pt-2 bg-black/20 p-2 rounded">
+            <div className="font-extrabold uppercase text-slate-400 tracking-wider mb-1 flex items-center gap-1.5 select-none">
+              <span>Modifiers</span>
+              <div className="h-[1px] flex-1 bg-[#a3761a]/20" />
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-slate-400">
+              <div className="flex items-center gap-1">
+                <span>💫</span>
+                <span>Animation: Orbs combo</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>✨</span>
+                <span>Ambient Effects: Golden Glow</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>☄️</span>
+                <span>Custom Effects: Invoker HUD</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>🔊</span>
+                <span>Sound: Mastery Fanfare</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dota 2 Flavor Text */}
+        {isChecked && !thinnerCard && (
+          <div className="text-[10px] italic text-slate-500 font-medium font-serif mb-3 leading-snug border-t border-[#a3761a]/20 pt-1.5">
+            "A testament of absolute focus, completed with master-class precision under the vigilant eyes of the Arsenal Magus."
+          </div>
         )}
       </div>
 
@@ -163,7 +211,9 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
         {onToggleChecked && (
           <label 
             onClick={(e) => e.stopPropagation()} 
-            className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-slate-200 cursor-pointer select-none font-semibold uppercase tracking-wider ml-2"
+            className={`flex items-center gap-1.5 text-[10px] cursor-pointer select-none font-semibold uppercase tracking-wider ml-2 ${
+              isChecked ? 'text-[#e4ae39] hover:text-amber-300' : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
             <input
               type="checkbox"
@@ -172,12 +222,15 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
                 e.stopPropagation();
                 onToggleChecked(entry.id);
               }}
-              className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900 cursor-pointer"
+              className="w-3.5 h-3.5 rounded border-slate-700 text-amber-500 focus:ring-[#e4ae39]/20 bg-slate-900 cursor-pointer"
             />
             <span>Done</span>
           </label>
         )}
       </div>
+
+      {/* Gold Bottom Bar for Immortal Card */}
+      {isChecked && <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#a3761a] via-[#e4ae39] to-[#a3761a]" />}
     </div>
   );
 };

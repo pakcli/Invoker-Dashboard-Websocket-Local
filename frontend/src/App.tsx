@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy } from 'lucide-react';
+import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy, Award, Trophy, Package } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -59,31 +59,58 @@ const SPELL_NAMES: Record<string, { formal: string; dota: string }> = {
 const FlippableCard: React.FC<{
   isRevealed: boolean;
   thinnerCard: boolean;
+  entrySource?: string;
   children: React.ReactNode;
-}> = ({ isRevealed, thinnerCard, children }) => {
+}> = ({ isRevealed, thinnerCard, entrySource = 'proj', children }) => {
+  const renderPlaceholderIcon = () => {
+    const size = thinnerCard ? 18 : 30;
+    switch (entrySource) {
+      case 'proj':
+        return <Folder size={size} className="text-emerald-400" />;
+      case 'cert':
+        return <Award size={size} className="text-emerald-400" />;
+      case 'achv':
+        return <Trophy size={size} className="text-emerald-400" />;
+      case 'item':
+        return <Package size={size} className="text-emerald-400" />;
+      default:
+        return <Folder size={size} className="text-emerald-400" />;
+    }
+  };
+
   return (
-    <div className={`perspective-1000 w-full max-w-[512px] ${thinnerCard ? 'min-h-[105px] h-[105px]' : 'aspect-[4/3]'} relative`}>
-      <div className={`w-full h-full preserve-3d transition-transform duration-700 relative ${isRevealed ? 'rotate-y-0' : 'rotate-y-180'}`}>
-        {/* Front face: the actual portfolio card */}
-        <div className="absolute inset-0 backface-hidden w-full h-full">
-          {children}
-        </div>
-        {/* Back face: plain blank placeholder */}
-        <div className="absolute inset-0 backface-hidden rotate-y-180 w-full h-full">
-          <div className="bg-[#0c0f13] border-2 border-dashed border-emerald-500/20 rounded-lg flex flex-col items-center justify-center p-5 shadow-[0_0_15px_rgba(0,0,0,0.5)] h-full w-full select-none hover:border-emerald-500/40 transition-colors duration-300 relative">
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg pointer-events-none" />
-            <div className="w-12 h-12 rounded-full bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] animate-pulse mb-2">
-              <span className="text-xl">🔮</span>
-            </div>
-            {!thinnerCard && (
-              <>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest font-dota">Temporal Node</span>
-                <span className="text-[9px] text-emerald-500/50 uppercase tracking-wider font-semibold mt-1">Pending Vision</span>
-              </>
-            )}
+    <div className={`w-full max-w-[512px] ${thinnerCard ? 'min-h-[105px] h-[105px]' : 'aspect-[4/3]'} relative overflow-hidden rounded-lg`}>
+      {/* 1. Real Card (Fades and scales in when revealed) */}
+      <div className={`w-full h-full absolute inset-0 transition-all duration-500 ease-out ${
+        isRevealed ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+      }`}>
+        {children}
+      </div>
+
+      {/* 2. Placeholder Card (Fades and scales out when revealed) */}
+      <div className={`w-full h-full absolute inset-0 transition-all duration-500 ease-out ${
+        isRevealed ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100 pointer-events-auto'
+      }`}>
+        <div className="bg-[#0c0f13] border border-emerald-500/80 rounded-lg flex flex-col items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.35)] h-full w-full select-none hover:border-emerald-550 transition-colors duration-300 relative">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.02)_1px,transparent_1px)] bg-[size:20px_20px] rounded-lg pointer-events-none" />
+          <div className={`rounded-lg border border-emerald-500/35 flex items-center justify-center bg-emerald-950/20 shadow-[0_0_10px_rgba(16,185,129,0.15)] animate-pulse ${
+            thinnerCard ? 'w-8 h-8' : 'w-14 h-14'
+          }`}>
+            {renderPlaceholderIcon()}
           </div>
+          {!thinnerCard && (
+            <>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-dota mt-3">Temporal Node</span>
+              <span className="text-[8px] text-emerald-500/60 uppercase tracking-wider font-semibold mt-1">Pending Vision</span>
+            </>
+          )}
         </div>
       </div>
+
+      {/* 3. Border scale shockwave animation (only when transitioning to revealed) */}
+      {isRevealed && (
+        <div className="dota-border-scale-animation" />
+      )}
     </div>
   );
 };
@@ -164,6 +191,9 @@ export const App: React.FC = () => {
   const [revealedCardIds, setRevealedCardIds] = useState<Record<string, boolean>>({});
   const [isDreamingSequenceActive, setIsDreamingSequenceActive] = useState(false);
   const [isAcceptingMatch, setIsAcceptingMatch] = useState(false);
+  const [isMatchFlashing, setIsMatchFlashing] = useState(false);
+  const [isHoveringFindMatch, setIsHoveringFindMatch] = useState(false);
+  const [isClosingGlow, setIsClosingGlow] = useState(false);
   const [checkedCards, setCheckedCards] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('checkedCards');
@@ -875,6 +905,72 @@ export const App: React.FC = () => {
     navigateToEntry(null);
   };
 
+  const renderImmortalSection = (entry: PortfolioEntry) => {
+    return (
+      <div className="mt-4 flex flex-col gap-4 animate-fadeIn select-none prose-none">
+        {/* Rarity and Slot Info */}
+        <div className="bg-[#191d24]/40 border border-[#a3761a]/30 rounded-lg p-3 text-xs">
+          <div className="grid grid-cols-2 gap-y-2 font-sans font-semibold">
+            <div>
+              <span className="text-slate-400">Rarity:</span>{" "}
+              <span className="dota-immortal-text font-black uppercase tracking-wider">Immortal</span>
+            </div>
+            <div>
+              <span className="text-slate-400">Slot:</span>{" "}
+              <span className="text-slate-200 font-bold">Achievement</span>
+            </div>
+            {entry.datestart && (
+              <div className="col-span-2 text-slate-350">
+                <span className="text-slate-400">Unlocked:</span>{" "}
+                <span>{entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Modifiers List */}
+        <div className="bg-black/30 border border-[#a3761a]/25 rounded-lg p-4 font-sans">
+          <h4 className="text-xs font-black uppercase text-slate-200 tracking-wider mb-2.5 flex items-center gap-2 border-b border-[#a3761a]/15 pb-1">
+            <span>Modifiers</span>
+          </h4>
+          <div className="space-y-2 text-xs text-slate-350 font-medium">
+            <div className="flex items-center gap-2">
+              <span className="text-[#e4ae39]">💫</span>
+              <span><strong>Animation:</strong> Custom Orb combinations {entry.skill ? `(${entry.skill.toUpperCase()})` : ''}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#e4ae39]">✨</span>
+              <span><strong>Ambient Effects:</strong> Gold highlight ring and soft HUD hover dimming</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#e4ae39]">☄️</span>
+              <span><strong>Custom Effects:</strong> Connected dependency network paths glow matching active combo orbs</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#e4ae39]">🔊</span>
+              <span><strong>Sound:</strong> Arsenal Magus custom mastery fanfare active on complete toggle</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Flavor Text */}
+        <div className="text-xs italic text-slate-500 font-serif border-l-2 border-[#a3761a]/30 pl-3 leading-relaxed py-0.5">
+          "A testament of absolute focus, completed with master-class precision under the vigilant eyes of the Arsenal Magus."
+        </div>
+
+        {/* Bottom marketability banners */}
+        <div className="border border-[#a3761a]/20 rounded overflow-hidden mt-2">
+          <div className="bg-[#2d1717] px-3 py-1.5 text-[9px] font-black text-[#fca5a5] uppercase tracking-wider text-center border-b border-[#a3761a]/15">
+            COMPLETED: {entry.dateend || entry.datestart || 'N/A'}
+          </div>
+          <div className="bg-[#e4ae39] px-3 py-1.5 text-[10px] font-black text-slate-950 uppercase tracking-widest text-center font-sans">
+            LIMITED MARKETABILITY
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const openAddModal = () => {
     setEditEntry(null);
     setIsEditingInline(false);
@@ -882,39 +978,40 @@ export const App: React.FC = () => {
   };
 
   const scrollToCurrentDate = () => {
-    if (filteredEntries.length === 0) return;
+    const allEntries = entries.length > 0 ? entries : filteredEntries;
+    if (allEntries.length === 0) return;
     const today = new Date().toISOString().slice(0, 10);
-    let closestEntry = filteredEntries[0];
-    let minDiff = Infinity;
 
-    filteredEntries.forEach(entry => {
-      if (!entry.datestart) return;
-      const diff = Math.abs(new Date(entry.datestart).getTime() - new Date(today).getTime());
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestEntry = entry;
+    // Prefer: the earliest future/today entry (nearest upcoming)
+    const futureEntries = allEntries
+      .filter(e => e.datestart && e.datestart >= today)
+      .sort((a, b) => a.datestart!.localeCompare(b.datestart!));
+
+    // Fallback: the most recent past entry
+    const pastEntries = allEntries
+      .filter(e => e.datestart && e.datestart < today)
+      .sort((a, b) => b.datestart!.localeCompare(a.datestart!));
+
+    const targetEntry = futureEntries[0] ?? pastEntries[0];
+    if (!targetEntry) return;
+
+    const el = document.getElementById(`card-${targetEntry.id}`);
+    if (el) {
+      let scrollParent = el.parentElement;
+      while (scrollParent && scrollParent !== document.body) {
+        const style = window.getComputedStyle(scrollParent);
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+          break;
+        }
+        scrollParent = scrollParent.parentElement;
       }
-    });
-
-    if (closestEntry) {
-      const el = document.getElementById(`card-${closestEntry.id}`);
-      if (el) {
-        let scrollParent = el.parentElement;
-        while (scrollParent && scrollParent !== document.body) {
-          const style = window.getComputedStyle(scrollParent);
-          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-            break;
-          }
-          scrollParent = scrollParent.parentElement;
-        }
-        if (scrollParent && scrollParent !== document.body) {
-          const elRect = el.getBoundingClientRect();
-          const parentRect = scrollParent.getBoundingClientRect();
-          const targetScrollTop = scrollParent.scrollTop + (elRect.top - parentRect.top) - (parentRect.height / 2) + (elRect.height / 2);
-          scrollParent.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
-        } else {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+      if (scrollParent && scrollParent !== document.body) {
+        const elRect = el.getBoundingClientRect();
+        const parentRect = scrollParent.getBoundingClientRect();
+        const targetScrollTop = scrollParent.scrollTop + (elRect.top - parentRect.top) - (parentRect.height / 2) + (elRect.height / 2);
+        scrollParent.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
   };
@@ -944,8 +1041,109 @@ export const App: React.FC = () => {
         </button>
       )}
 
+      {/* Fixed bottom-right: Blue smoky glow + stats + FIND MATCH button */}
+      <div className="fixed bottom-0 right-0 z-50 pointer-events-none">
+        {/* Blue smoky corner ambient glow — only when planning is active */}
+        {isDreamingOpen && readViewMode === 'split' && (
+          <div className="planning-smoke-glow w-[320px] h-[220px]" />
+        )}
+        {/* Green smoky corner ambient glow — default is static 0.4 intensity; hover makes it active & animated */}
+        {!isDreamingOpen && (
+          <div className={`w-[550px] h-[380px] absolute bottom-0 right-0 pointer-events-none transition-all duration-500 origin-bottom-right ${
+            isClosingGlow
+              ? 'find-match-smoke-glow-closing'
+              : isHoveringFindMatch
+                ? 'find-match-smoke-glow-hover opacity-100 scale-100'
+                : 'find-match-smoke-glow-static opacity-40 scale-95'
+          }`} />
+        )}
+      </div>
+
+      <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3">
+        {/* Stats mini-display to the left of the button */}
+        {!isDreamingOpen && isHoveringFindMatch && (() => {
+          const today = new Date().toISOString().slice(0, 10);
+          const upcoming = entries.filter(e => e.datestart && e.datestart >= today && !checkedCards[e.id] && !e.done);
+          const projCount = upcoming.filter(e => e.source === 'proj').length;
+          const itemCount = upcoming.filter(e => e.source !== 'proj').length;
+          return (
+            <div className="text-right select-none pointer-events-none animate-fadeIn">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">upcoming</div>
+              <div className="flex items-center gap-1.5 justify-end">
+                <span className="text-[11px] font-black text-slate-400">
+                  <span className="text-cyan-400">{projCount}</span> proj
+                </span>
+                <span className="text-slate-700">·</span>
+                <span className="text-[11px] font-black text-slate-400">
+                  <span className="text-amber-400">{itemCount}</span> item
+                </span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {isDreamingOpen && readViewMode === 'split' ? (
+          <button
+            onClick={() => {
+              if (soundEnabled) sfx.playTick();
+              setIsMatchFlashing(true);
+              setTimeout(() => {
+                setIsMatchFlashing(false);
+                setIsDreamingOpen(false);
+              }, 180);
+            }}
+            className={`relative px-6 py-2.5 rounded-sm font-black text-xs tracking-[0.2em] uppercase transition-all duration-200 select-none
+              bg-gradient-to-b from-[#3a3a3a] to-[#1e1e1e]
+              hover:from-[#7a2222] hover:to-[#3a1010]
+              text-slate-400 hover:text-red-100
+              border border-slate-700 hover:border-red-700/60
+              shadow-[0_4px_0_#111,0_1px_0_rgba(255,255,255,0.06)_inset]
+              hover:shadow-[0_4px_0_#2a0a0a,inset_0_1px_0_rgba(255,255,255,0.08),0_0_16px_rgba(220,38,38,0.3)]
+              active:shadow-[0_1px_0_#111] active:translate-y-[3px]
+              ${isMatchFlashing ? 'find-match-flash' : ''}`}
+          >
+            <span className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            ✕ CLOSE VISION
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              setIsHoveringFindMatch(false);
+              if (matchReadySimEnabled) {
+                setIsClosingGlow(true);
+                setIsMatchFlashing(true);
+                setTimeout(() => {
+                  setIsMatchFlashing(false);
+                  setIsClosingGlow(false);
+                  triggerDreamingVision();
+                }, 500); // 0.5s closing/dimming delay
+              } else {
+                setIsMatchFlashing(true);
+                setTimeout(() => {
+                  setIsMatchFlashing(false);
+                  triggerDreamingVision();
+                }, 150);
+              }
+            }}
+            onMouseEnter={() => setIsHoveringFindMatch(true)}
+            onMouseLeave={() => setIsHoveringFindMatch(false)}
+            className={`find-match-btn relative px-7 py-2.5 rounded-sm font-black text-sm tracking-[0.25em] uppercase transition-all duration-200 select-none
+              bg-gradient-to-b from-[#3a3a3a] to-[#1e1e1e]
+              hover:from-[#3a7a3a] hover:to-[#1a3d1a]
+              text-slate-300
+              border border-slate-700
+              shadow-[0_4px_0_#111,0_1px_0_rgba(255,255,255,0.06)_inset,0_-1px_0_rgba(0,0,0,0.5)_inset]
+              active:shadow-[0_1px_0_#111] active:translate-y-[3px]
+              ${isMatchFlashing ? 'find-match-flash' : ''}`}
+          >
+            <span className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            <span className="relative z-10 font-dota">FIND MATCH</span>
+          </button>
+        )}
+      </div>
+
       {/* Main Content Layout - Full-screen layout */}
-      <main className={`flex-1 min-h-0 w-full px-6 py-6 flex flex-col lg:flex-row items-stretch ${
+      <main className={`flex-1 min-h-0 overflow-hidden w-full px-6 py-6 flex flex-col lg:flex-row items-stretch ${
         sidebarCollapsed ? 'gap-0' : 'gap-8'
       } ${
         sidebarPosition === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'
@@ -1052,69 +1250,22 @@ export const App: React.FC = () => {
             setReverseTimeline={setReverseTimeline}
             entriesForStats={entriesForComboCounts}
             onSelectCombo={handleSelectCombo}
+            shownCount={isDreamingOpen && readViewMode === 'split' ? upcomingEntries.length : filteredEntries.length}
           />
         </aside>
 
         {/* Right Side: Timeline Display (Fills the remaining main area) */}
-        <section className="flex-1 min-w-0 h-full flex flex-col min-h-0">
-          <div className="bg-[#0b0d10]/95 border-b border-slate-900/60 py-4 mb-4 flex items-center justify-between gap-4 shrink-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-sm font-black dark:text-slate-400 text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <span>{isDreamingOpen && readViewMode === 'split' ? 'Tegak Lurus Planning' : 'Archives Timeline Feed'}</span>
-                {activeCombo && !isDreamingOpen && (
-                  <span className="normal-case text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
-                    Active Filter: {getComboDisplayName(activeCombo)}
-                  </span>
-                )}
-              </h2>
-              {readViewMode === 'split' && selectedEntry && (
-                <div className="flex items-center gap-1 p-0.5 bg-slate-950/80 border border-slate-800/80 rounded-lg">
-                  <button
-                    onClick={() => { setSplitPanelSize('25'); localStorage.setItem('splitPanelSize', '25'); }}
-                    className={`px-2 py-0.5 text-[9px] font-black rounded transition-all ${
-                      splitPanelSize === '25'
-                        ? 'bg-[#15191e] text-emerald-400 border border-slate-700/50'
-                        : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >25%</button>
-                  <button
-                    onClick={() => { setSplitPanelSize('50'); localStorage.setItem('splitPanelSize', '50'); }}
-                    className={`px-2 py-0.5 text-[9px] font-black rounded transition-all ${
-                      splitPanelSize === '50'
-                        ? 'bg-[#15191e] text-purple-400 border border-slate-700/50'
-                        : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >50%</button>
-                </div>
+        <section className="flex-1 min-w-0 h-full flex flex-col min-h-0 pb-16">
+          {/* Slim top navbar — title + split-panel size toggle, always sticky */}
+          <div className="bg-[#0b0d10]/95 border-b border-slate-900/60 py-1.5 px-1 mb-3 flex items-center gap-3 shrink-0">
+            <h2 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
+              <span>{isDreamingOpen && readViewMode === 'split' ? 'Tegak Lurus Planning' : 'Archives Timeline Feed'}</span>
+              {activeCombo && !isDreamingOpen && (
+                <span className="normal-case text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">
+                  {getComboDisplayName(activeCombo)}
+                </span>
               )}
-              <span className="text-xs text-slate-500 font-semibold bg-slate-950 px-2 py-1 rounded border border-slate-800/80">
-                Showing {isDreamingOpen && readViewMode === 'split' ? upcomingEntries.length : filteredEntries.length} entries
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {isDreamingOpen && readViewMode === 'split' ? (
-                <button
-                  onClick={() => {
-                    if (soundEnabled) sfx.playTick();
-                    setIsDreamingOpen(false);
-                  }}
-                  className="px-4 py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-200 hover:text-white rounded-lg text-xs font-bold transition-all shadow-sm font-dota uppercase tracking-wider shrink-0"
-                >
-                  Close Vision
-                </button>
-              ) : (
-                <button
-                  onClick={triggerDreamingVision}
-                  className="relative overflow-hidden px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-950/75 to-teal-950/75 hover:from-emerald-900 hover:to-teal-900 border border-emerald-500/30 text-emerald-250 hover:text-white transition-all text-xs font-black tracking-wider uppercase flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] group shrink-0"
-                >
-                  <span className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_70%)]" />
-                  <span className="relative z-10 flex items-center gap-1.5 font-dota">
-                    🔮 Start Game
-                  </span>
-                </button>
-              )}
-            </div>
+            </h2>
           </div>
 
           {/* Split view: timeline + detail panel side by side */}
@@ -1193,19 +1344,33 @@ export const App: React.FC = () => {
                 const hasNext = currentIdx < filteredEntries.length - 1;
                 const depIds = selectedEntry.dependencies || [];
                 const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
+                const isDoneAchievement = selectedEntry.source === 'achv' && (checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false));
                 return (
                   <div className={`min-w-0 h-full flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${splitPanelSize === '25' ? 'w-1/4 min-w-[290px] flex-none' : 'w-1/2 flex-1'}`}>
-                    <div className="bg-[#12161b] border border-slate-800 rounded-xl flex flex-col shadow-2xl overflow-hidden h-full">
+                    <div className={`flex flex-col shadow-2xl overflow-hidden h-full relative ${
+                      isDoneAchievement 
+                        ? 'bg-[#121415] border-2 border-[#a3761a] rounded-xl pt-2' 
+                        : 'bg-[#12161b] border border-slate-800 rounded-xl'
+                    }`}>
+                      {isDoneAchievement && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
                       {/* Split Panel Header */}
-                      <div className="p-4 border-b border-slate-800 bg-[#15191e] flex items-start justify-between gap-3 shrink-0">
+                      <div className={`p-4 border-b flex items-start justify-between gap-3 shrink-0 ${
+                        isDoneAchievement 
+                          ? 'bg-gradient-to-b from-[#181a1c] to-[#121415] border-[#a3761a]/30' 
+                          : 'bg-[#15191e] border-slate-800'
+                      }`}>
                         <div className="min-w-0">
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider mr-2">
-                            {selectedEntry.source}
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 ${
+                            isDoneAchievement 
+                              ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30' 
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}>
+                            {isDoneAchievement ? 'IMMORTAL' : selectedEntry.source}
                           </span>
                           <span className="text-xs text-slate-400 font-semibold">
                             {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
                           </span>
-                          <h2 className="text-base font-black text-slate-100 mt-1 truncate">{selectedEntry.title}</h2>
+                          <h2 className={`text-base font-black mt-1 truncate ${isDoneAchievement ? 'dota-immortal-text font-serif font-black' : 'text-slate-100'}`}>{selectedEntry.title}</h2>
                         </div>
                         <button
                           onClick={handleCloseModal}
@@ -1325,7 +1490,9 @@ export const App: React.FC = () => {
                               <iframe src={`${selectedEntry.imgPath}#toolbar=0`} className="w-full h-full border-none" title={selectedEntry.title} />
                             </div>
                           ) : (
-                            <div className="w-full h-36 rounded-lg overflow-hidden border border-slate-800 mb-4 bg-slate-900/50">
+                            <div className={`w-full h-36 rounded-lg overflow-hidden mb-4 bg-slate-900/50 border ${
+                              isDoneAchievement ? 'border-[#a3761a]/30 shadow-[0_0_15px_rgba(228,174,57,0.08)]' : 'border-slate-800'
+                            }`}>
                               <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
                             </div>
                           )
@@ -1336,10 +1503,14 @@ export const App: React.FC = () => {
                         ) : (
                           <p className="text-xs italic text-slate-400 flex items-center gap-1"><Info size={14} /><span>No archive description provided.</span></p>
                         )}
+
+                        {isDoneAchievement && renderImmortalSection(selectedEntry)}
                       </div>
 
                       {/* Footer */}
-                      <div className="p-3 border-t border-slate-800 flex flex-wrap justify-end gap-2 bg-[#15191e] shrink-0">
+                      <div className={`p-3 border-t flex flex-wrap justify-end gap-2 shrink-0 ${
+                        isDoneAchievement ? 'bg-[#121415] border-[#a3761a]/20' : 'bg-[#15191e] border-slate-800'
+                      }`}>
                         <button onClick={() => handleOpenFolder(selectedEntry.folderPath)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-bold transition-colors">
                           <Folder size={12} /><span>Folder</span>
                         </button>
@@ -1352,7 +1523,9 @@ export const App: React.FC = () => {
                           <Copy size={12} /><span>Duplicate</span>
                         </button>
                         <button onClick={() => { setEditEntry(selectedEntry); setIsEditingInline(true); }} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[11px] font-bold transition-colors">Edit</button>
-                        <button onClick={handleCloseModal} className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-[11px] font-bold transition-colors text-slate-400">Close</button>
+                        <button onClick={handleCloseModal} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold ${
+                          isDoneAchievement ? 'dota-decline-btn' : 'bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400'
+                        }`}>Close</button>
                       </div>
                     </div>
                   </div>
@@ -1368,19 +1541,33 @@ export const App: React.FC = () => {
         const currentIdx = filteredEntries.findIndex(e => e.id === selectedEntry.id);
         const hasPrev = currentIdx > 0;
         const hasNext = currentIdx < filteredEntries.length - 1;
+        const isDoneAchievement = selectedEntry.source === 'achv' && (checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false));
         return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#12161b] border-2 border-slate-800 rounded-xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <div className={`max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative ${
+              isDoneAchievement 
+                ? 'bg-[#121415] border-2 border-[#a3761a] rounded-xl pt-2' 
+                : 'bg-[#12161b] border-2 border-slate-800 rounded-xl'
+            }`}>
+              {isDoneAchievement && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
               {/* Modal Header */}
-              <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#15191e]">
+              <div className={`p-4 border-b flex justify-between items-center ${
+                isDoneAchievement 
+                  ? 'bg-gradient-to-b from-[#181a1c] to-[#121415] border-[#a3761a]/30' 
+                  : 'bg-[#15191e] border-slate-800'
+              }`}>
                 <div>
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase tracking-wider mr-2">
-                    {selectedEntry.source}
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 ${
+                    isDoneAchievement 
+                      ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30' 
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                  }`}>
+                    {isDoneAchievement ? 'IMMORTAL' : selectedEntry.source}
                   </span>
                   <span className="text-xs text-slate-400 font-semibold">
                     {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
                   </span>
-                  <h2 className="text-lg font-black text-slate-100 mt-1">
+                  <h2 className={`text-lg font-black mt-1 ${isDoneAchievement ? 'dota-immortal-text font-serif font-black' : 'text-slate-100'}`}>
                     {selectedEntry.title}
                   </h2>
                 </div>
@@ -1628,7 +1815,9 @@ export const App: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-800 mb-6 bg-slate-900/50">
+                    <div className={`w-full h-48 rounded-lg overflow-hidden mb-6 bg-slate-900/50 border ${
+                      isDoneAchievement ? 'border-[#a3761a]/30 shadow-[0_0_15px_rgba(228,174,57,0.08)]' : 'border-slate-800'
+                    }`}>
                       <img src={selectedEntry.imgPath} alt={selectedEntry.title} className="w-full h-full object-cover" />
                     </div>
                   )
@@ -1644,10 +1833,14 @@ export const App: React.FC = () => {
                     <span>No detailed archive description provided in index.md.</span>
                   </p>
                 )}
+
+                {isDoneAchievement && renderImmortalSection(selectedEntry)}
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 border-t border-slate-800 flex justify-end gap-2 bg-[#15191e]">
+              <div className={`p-4 border-t flex justify-end gap-2 ${
+                isDoneAchievement ? 'bg-[#121415] border-[#a3761a]/20' : 'bg-[#15191e] border-slate-800'
+              }`}>
                 <button
                   onClick={() => handleOpenFolder(selectedEntry.folderPath)}
                   className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
@@ -1696,7 +1889,9 @@ export const App: React.FC = () => {
                 </button>
                 <button
                   onClick={handleCloseModal}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-bold transition-colors text-slate-400"
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
+                    isDoneAchievement ? 'dota-decline-btn' : 'bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400'
+                  }`}
                 >
                   Close
                 </button>
@@ -1734,7 +1929,9 @@ export const App: React.FC = () => {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_65%)] pointer-events-none" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.05)_0%,transparent_60%)] pointer-events-none" />
 
-          <div className="bg-[#0c0e12]/95 border-2 border-emerald-500/40 rounded-2xl max-w-6xl w-full h-[85vh] flex flex-col shadow-[0_0_50px_rgba(16,185,129,0.25)] overflow-hidden relative z-10">
+          <div className={`bg-[#0c0e12]/95 border-2 border-emerald-500/40 rounded-2xl max-w-6xl w-full h-[85vh] flex flex-col shadow-[0_0_50px_rgba(16,185,129,0.25)] overflow-hidden relative z-10 ${
+            matchReadySimEnabled ? 'planning-panel-enter-anim' : ''
+          }`}>
             {/* Modal Header */}
             <div className="p-5 border-b border-emerald-500/20 flex flex-col md:flex-row items-center justify-between bg-emerald-950/10 gap-4 relative">
               {/* Left side: Toggle show all / only undone */}
@@ -1900,6 +2097,7 @@ export const App: React.FC = () => {
                                       key={`dream_flip_${entry.id}`}
                                       isRevealed={isRevealed}
                                       thinnerCard={thinnerCard}
+                                      entrySource={entry.source}
                                     >
                                       {renderCard()}
                                     </FlippableCard>
@@ -2030,33 +2228,36 @@ export const App: React.FC = () => {
 
       {/* Dota 2 Match Ready Prompt */}
       {isMatchReadyPromptOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md select-none font-dota">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md select-none font-sans">
           {/* Animated green cosmic background aura */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.15)_0%,transparent_60%)] pointer-events-none animate-pulse" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(62,180,107,0.18)_0%,transparent_60%)] pointer-events-none animate-pulse" />
 
-          <div className="bg-[#0b0e12] border-2 border-emerald-500/40 rounded-sm max-w-lg w-full p-8 shadow-[0_0_50px_rgba(16,185,129,0.3)] flex flex-col gap-6 relative overflow-hidden text-center">
+          <div className={`bg-[#14171a] border-2 border-emerald-500/40 rounded shadow-[0_0_50px_rgba(62,180,107,0.35)] flex flex-col relative overflow-hidden text-center w-[580px] h-[195px] transition-all ${
+            isAcceptingMatch ? 'all-pick-exit' : 'all-pick-appear'
+          }`}>
             {/* Top decorative gradient line */}
-            <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" />
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-emerald-500 via-[#3eb46b] to-emerald-500 z-20" />
 
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-[0.25em] font-dota select-none">
-                Your Vision is Ready
+            {/* Top Section (Header) — Pitch Black Background */}
+            <div className="bg-[#07090b] border-b border-slate-950 px-6 py-4 flex flex-col items-center justify-center shrink-0">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.25em] font-sans opacity-95">
+                YOUR GAME IS READY
               </span>
-              <h3 className="text-3xl font-black text-slate-100 uppercase tracking-widest font-dota my-1">
-                ALl PLANNING
+              <h3 className="text-xl font-black text-slate-100 uppercase tracking-[0.18em] font-sans text-white mt-0.5">
+                ALL PICK
               </h3>
             </div>
 
-            {/* Accept Match Button Container */}
-            <div className="flex flex-col items-center justify-center py-4">
+            {/* Bottom Section (Body) — Lighter Dark Grey Background */}
+            <div className="flex-1 flex flex-col justify-start items-center pt-3 pb-6 relative">
+              {/* Accept Match Button Container */}
               <button
                 disabled={isAcceptingMatch}
                 onClick={handleAcceptMatchReady}
-                className={`relative group overflow-hidden px-14 py-4 bg-gradient-to-b from-emerald-600 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 border-t border-emerald-400 text-white font-extrabold uppercase tracking-widest text-lg shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] transition-all rounded active:translate-y-[1px] min-w-[220px] ${isAcceptingMatch ? 'opacity-90 cursor-wait' : 'cursor-pointer'
-                  }`}
+                className={`px-14 py-3.5 text-white uppercase text-lg transition-all min-w-[200px] rounded dota-accept-btn ${isAcceptingMatch ? 'opacity-90 cursor-wait' : 'cursor-pointer'}`}
               >
                 {isAcceptingMatch ? (
-                  <span className="flex items-center justify-center gap-2">
+                  <span className="flex items-center justify-center gap-2 text-base">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     CONNECTING
                   </span>
@@ -2064,17 +2265,15 @@ export const App: React.FC = () => {
                   "ACCEPT"
                 )}
               </button>
-            </div>
 
-            {/* Decline Match Button */}
-            <div className="flex justify-center mt-2">
+              {/* Decline Match Button in bottom right */}
               <button
                 disabled={isAcceptingMatch}
                 onClick={() => {
                   if (soundEnabled) sfx.playFail();
                   setIsMatchReadyPromptOpen(false);
                 }}
-                className="text-[10px] text-slate-500 hover:text-slate-300 font-bold uppercase tracking-widest transition-colors flex items-center gap-1 hover:underline"
+                className="text-[9px] text-slate-500 hover:text-slate-350 font-bold uppercase transition-colors flex items-center gap-1 absolute bottom-2.5 right-4 hover:underline"
               >
                 <span>🛈</span> Decline Match
               </button>

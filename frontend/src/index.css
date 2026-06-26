@@ -4,13 +4,95 @@
 
 @layer base {
   body {
-    @apply bg-[#0b0d10] text-[#e2e8f0] transition-colors duration-200;
+    @apply bg-[#080a0c] text-[#cbd5e1] transition-colors duration-200;
+    background-image: 
+      radial-gradient(circle at 50% 50%, rgba(20, 24, 30, 0.6) 0%, rgba(8, 10, 12, 0.95) 100%),
+      linear-gradient(rgba(255, 255, 255, 0.005) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
+    background-size: 100% 100%, 28px 28px, 28px 28px;
+    background-attachment: fixed;
   }
   
   body.light {
     @apply bg-slate-50 text-slate-800;
+    background-image: none;
   }
 }
+
+/* Dota 2 Buttons & Panels Theme */
+.dota-panel-bg {
+  background-color: #0c0e12;
+  background-image: linear-gradient(135deg, rgba(25, 29, 36, 0.15) 25%, transparent 25%, transparent 50%, rgba(25, 29, 36, 0.15) 50%, rgba(25, 29, 36, 0.15) 75%, transparent 75%, transparent);
+  background-size: 40px 40px;
+}
+
+.dota-accept-btn {
+  background: linear-gradient(180deg, #2e7a4b 0%, #1e5a35 45%, #103b21 100%);
+  border: 1px solid #3eb46b;
+  box-shadow: 0 0 12px rgba(62, 180, 107, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.8);
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dota-accept-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #37945b 0%, #246d3f 45%, #154c2a 100%);
+  box-shadow: 0 0 20px rgba(62, 180, 107, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  border-color: #53d082;
+  transform: translateY(-0.5px);
+}
+
+.dota-accept-btn:active:not(:disabled) {
+  background: linear-gradient(180deg, #123d22 0%, #0d3019 100%);
+  box-shadow: 0 0 6px rgba(62, 180, 107, 0.2);
+  transform: translateY(0.5px);
+}
+
+.dota-decline-btn {
+  background: linear-gradient(180deg, #2a1b1b 0%, #1c1010 100%);
+  border: 1px solid #4a2d2d;
+  color: #9ca3af;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dota-decline-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3d2424 0%, #291616 100%);
+  border-color: #f87171;
+  color: #f3f4f6;
+}
+
+.dota-decline-btn:active:not(:disabled) {
+  background: #180d0d;
+}
+
+/* Dota 2 Rarity Style: Immortal */
+.dota-immortal-glow {
+  background-color: #121415 !important;
+  border-color: #a3761a !important;
+  box-shadow: 0 0 22px rgba(228, 174, 57, 0.22), inset 0 0 0 1.5px rgba(228, 174, 57, 0.5), inset 0 0 6px rgba(228, 174, 57, 0.15) !important;
+}
+
+.dota-immortal-glow:hover {
+  border-color: #e4ae39 !important;
+  box-shadow: 0 0 30px rgba(228, 174, 57, 0.45), inset 0 0 0 2px rgba(228, 174, 57, 0.7), inset 0 0 8px rgba(228, 174, 57, 0.25) !important;
+}
+
+.dota-immortal-topbar {
+  background: linear-gradient(90deg, #8a5e12 0%, #e4ae39 35%, #fcd34d 50%, #e4ae39 65%, #8a5e12 100%);
+  height: 3px;
+  width: 100%;
+}
+
+.dota-immortal-text {
+  color: #e4ae39;
+  text-shadow: 0 0 8px rgba(228, 174, 57, 0.4);
+}
+
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
@@ -109,3 +191,174 @@ body.light ::-webkit-scrollbar-thumb:hover {
   transform: rotateY(0deg);
 }
 
+/* FIND MATCH button flash on click */
+@keyframes find-match-flash {
+  0%   { opacity: 1; transform: scale(1); }
+  25%  { opacity: 0.25; transform: scale(0.96); filter: brightness(2); }
+  60%  { opacity: 0.8; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.find-match-flash {
+  animation: find-match-flash 0.18s ease-out forwards;
+}
+
+/* Blue smoky corner ambient glow when planning is open */
+@keyframes smoke-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 0.9;  transform: scale(1.08); }
+}
+.planning-smoke-glow {
+  animation: smoke-pulse 2.8s ease-in-out infinite;
+  background: radial-gradient(
+    ellipse 220px 160px at 100% 100%,
+    rgba(56, 182, 255, 0.25) 0%,
+    rgba(99, 179, 237, 0.14) 40%,
+    rgba(56, 182, 255, 0.05) 70%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* FIND MATCH button hover glow class */
+.find-match-btn:hover {
+  box-shadow:
+    0 4px 0 #0a2a0a,
+    0 0 22px rgba(74, 222, 128, 0.4),
+    0 0 50px rgba(74, 222, 128, 0.12),
+    inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  border-color: rgba(52, 211, 153, 0.75) !important;
+  color: #ffffff !important;
+}
+
+/* Static green smoky corner ambient glow (default state) */
+.find-match-smoke-glow-static {
+  background: radial-gradient(
+    ellipse 420px 240px at 100% 100%,
+    rgba(52, 211, 153, 0.25) 0%,
+    rgba(16, 185, 129, 0.12) 40%,
+    rgba(52, 211, 153, 0.05) 70%,
+    transparent 100%
+  );
+  opacity: 0.4;
+  pointer-events: none;
+  transition: all 0.3s ease-out;
+}
+
+/* Active/animating green smoky corner when hovered (3x intensity + slight animation) */
+.find-match-smoke-glow-hover {
+  animation: smoke-pulse 3.2s ease-in-out infinite;
+  background: radial-gradient(
+    ellipse 460px 280px at 100% 100%,
+    rgba(52, 211, 153, 0.5) 0%,
+    rgba(16, 185, 129, 0.3) 40%,
+    rgba(52, 211, 153, 0.1) 70%,
+    transparent 100%
+  );
+  opacity: 1.0;
+  pointer-events: none;
+  transition: all 0.3s ease-out;
+}
+
+/* Closing animation for the green smoke when button is clicked */
+@keyframes smoke-close {
+  0% {
+    transform: scale(1);
+    opacity: 1.0;
+    filter: brightness(1.5) blur(0px);
+  }
+  30% {
+    transform: scale(1.08);
+    opacity: 0.9;
+    filter: brightness(2) blur(1px);
+  }
+  100% {
+    transform: scale(0.27);
+    opacity: 0.27;
+    filter: brightness(0.27) blur(10px);
+  }
+}
+.find-match-smoke-glow-closing {
+  animation: smoke-close 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  background: radial-gradient(
+    ellipse 460px 280px at 100% 100%,
+    rgba(52, 211, 153, 0.55) 0%,
+    rgba(16, 185, 129, 0.35) 40%,
+    rgba(52, 211, 153, 0.12) 70%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* All Pick match ready modal animations */
+@keyframes all-pick-scale-down {
+  0% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.all-pick-appear {
+  animation: all-pick-scale-down 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes all-pick-flip-out {
+  0% {
+    transform: rotateX(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateX(-90deg) scale(0.85);
+    opacity: 0;
+  }
+}
+.all-pick-exit {
+  animation: all-pick-flip-out 0.18s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+  transform-origin: top center;
+}
+
+/* 3D rotate-in transition for the pick planning panel */
+@keyframes planning-panel-enter {
+  0% {
+    transform: perspective(1000px) rotateX(45deg) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: perspective(1000px) rotateX(0deg) scale(1);
+    opacity: 1;
+  }
+}
+.planning-panel-enter-anim {
+  animation: planning-panel-enter 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  transform-origin: bottom center;
+}
+
+/* Border scale shockwave animation for timeline card reveal */
+@keyframes border-scale-out {
+  0% {
+    width: 20px;
+    height: 20px;
+    opacity: 1;
+    border: 2px solid rgba(52, 211, 153, 1);
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.7);
+    border-radius: 50%;
+  }
+  100% {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    border: 2px solid rgba(52, 211, 153, 0.2);
+    box-shadow: 0 0 25px rgba(52, 211, 153, 0.2);
+    border-radius: 8px;
+  }
+}
+.dota-border-scale-animation {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: border-scale-out 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

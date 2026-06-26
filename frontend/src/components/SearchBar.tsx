@@ -40,10 +40,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
-  const handleCollapse = () => {
-    setIsExpanded(false);
-    setSearchQuery('');
-    setIsValidRegex(true);
+  const handleSearchBtnClick = () => {
+    if (isExpanded) {
+      // Already open → clear the input but keep open
+      setSearchQuery('');
+      setIsValidRegex(true);
+      inputRef.current?.focus();
+    } else {
+      // Collapsed → open the search box
+      setIsExpanded(true);
+    }
   };
 
   // Focus input automatically when search is expanded
@@ -69,114 +75,83 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   }, [setSearchQuery]);
 
   return (
-    <div ref={searchRef} className="bg-[#111418] border border-slate-800 rounded-xl p-3 shadow-md transition-all">
-      {isExpanded || searchQuery ? (
-        <div className="flex items-center gap-2.5 w-full">
-          <div className="flex-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <Search size={18} />
-            </div>
-            <input
-              ref={inputRef}
-              type="text"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              placeholder="Regex Search..."
-              className={`w-full pl-10 pr-16 py-2 text-sm rounded-lg border focus:outline-none transition-all ${
-                searchQuery === ''
-                  ? 'bg-slate-900 border-slate-800 focus:border-slate-650 focus:ring-1 focus:ring-slate-700/10 text-slate-200'
-                  : isValidRegex
-                  ? 'bg-slate-900/60 border-emerald-500/40 text-slate-100 focus:ring-1 focus:ring-emerald-500/10'
-                  : 'bg-slate-900/60 border-red-500/40 text-slate-100 focus:ring-1 focus:ring-red-500/10'
-              }`}
-            />
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center gap-1.5">
-              {searchQuery && !isValidRegex && (
-                <span title="Invalid Regex Pattern">
-                  <AlertTriangle size={16} className="text-red-500" />
-                </span>
-              )}
-              <button
-                onClick={handleCollapse}
-                className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-350 transition-colors"
-                title="Close Search"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-wider font-sans">Close</span>
-              </button>
-            </div>
+    <div ref={searchRef} className="bg-[#111418] border border-slate-800 rounded-xl p-3 shadow-md transition-all flex flex-col gap-2">
+      {/* Always-visible row of 4 icon buttons */}
+      <div className="flex gap-2 w-full justify-between">
+        {/* Search Toggle / Clear Button */}
+        <button
+          onClick={handleSearchBtnClick}
+          className={`p-2 w-9 h-9 rounded-lg border transition-colors flex items-center justify-center shrink-0 ${
+            isExpanded
+              ? 'bg-slate-800 border-slate-600 text-slate-200'
+              : 'bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200'
+          }`}
+          title={isExpanded ? 'Clear Search' : 'Search Archives'}
+        >
+          <Search size={18} />
+        </button>
+
+        {/* Toggle Sidebar Side */}
+        <button
+          onClick={() => setSidebarPosition(sidebarPosition === 'left' ? 'right' : 'left')}
+          className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
+          title={sidebarPosition === 'left' ? 'Move HUD to Right' : 'Move HUD to Left'}
+        >
+          <ArrowLeftRight size={18} />
+        </button>
+
+        {/* Reset View (Now) Button */}
+        <button
+          onClick={onResetView}
+          className="p-2 h-9 px-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center font-black text-[10px] shrink-0 select-none font-dota uppercase tracking-widest"
+          title="Slide timeline to current date (Now)"
+        >
+          Now
+        </button>
+
+        {/* ADD New Instance Button */}
+        <button
+          onClick={onAddClick}
+          className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all shrink-0"
+          title="Add New Instance"
+        >
+          <Plus size={20} className="text-emerald-500" />
+        </button>
+      </div>
+
+      {/* Expandable search input — shown below the buttons when open */}
+      <div
+        className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          isExpanded ? 'max-h-12 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+            <Search size={16} />
           </div>
-
-          <div className="flex gap-2 shrink-0">
-            {/* Reset View (Now) Button */}
-            <button
-              onClick={onResetView}
-              className="p-2 h-9 px-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center font-black text-[10px] shrink-0 select-none font-dota uppercase tracking-widest"
-              title="Slide timeline to current date (Now)"
-            >
-              Now
-            </button>
-
-            {/* ADD New Instance Button */}
-            <button
-              onClick={onAddClick}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all shrink-0"
-              title="Add New Instance"
-            >
-              <Plus size={20} className="text-emerald-500" />
-            </button>
-
-            {/* Toggle Sidebar Side */}
-            <button
-              onClick={() => setSidebarPosition(sidebarPosition === 'left' ? 'right' : 'left')}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
-              title={sidebarPosition === 'left' ? 'Move HUD to Right' : 'Move HUD to Left'}
-            >
-              <ArrowLeftRight size={18} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-between items-center w-full">
-          {/* Row of 4 neat buttons: Search, Swap, Now, + */}
-          <div className="flex gap-2.5 w-full justify-between">
-            {/* Search Toggle Button */}
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
-              title="Search Archives"
-            >
-              <Search size={18} />
-            </button>
-
-            {/* Toggle Sidebar Side */}
-            <button
-              onClick={() => setSidebarPosition(sidebarPosition === 'left' ? 'right' : 'left')}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
-              title={sidebarPosition === 'left' ? 'Move HUD to Right' : 'Move HUD to Left'}
-            >
-              <ArrowLeftRight size={18} />
-            </button>
-
-            {/* Reset View (Now) Button */}
-            <button
-              onClick={onResetView}
-              className="p-2 h-9 px-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center font-black text-[10px] shrink-0 select-none font-dota uppercase tracking-widest"
-              title="Slide timeline to current date (Now)"
-            >
-              Now
-            </button>
-
-            {/* ADD New Instance Button */}
-            <button
-              onClick={onAddClick}
-              className="p-2 w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center transition-all shrink-0"
-              title="Add New Instance"
-            >
-              <Plus size={20} className="text-emerald-500" />
-            </button>
+          <input
+            ref={inputRef}
+            type="text"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder="Regex Search..."
+            className={`w-full pl-9 pr-10 py-2 text-sm rounded-lg border focus:outline-none transition-all ${
+              searchQuery === ''
+                ? 'bg-slate-900 border-slate-800 focus:border-slate-600 focus:ring-1 focus:ring-slate-700/10 text-slate-200'
+                : isValidRegex
+                ? 'bg-slate-900/60 border-emerald-500/40 text-slate-100 focus:ring-1 focus:ring-emerald-500/10'
+                : 'bg-slate-900/60 border-red-500/40 text-slate-100 focus:ring-1 focus:ring-red-500/10'
+            }`}
+          />
+          <div className="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
+            {searchQuery && !isValidRegex && (
+              <span title="Invalid Regex Pattern">
+                <AlertTriangle size={14} className="text-red-500" />
+              </span>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
