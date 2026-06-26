@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy, Award, Trophy, Package } from 'lucide-react';
+import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy, Award, Trophy, Package, ChevronDown } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -13,17 +13,75 @@ import AchievementCard from './components/AchievementCard';
 import sfx from './lib/sfx';
 
 
+const hasUnfinishedProjectDeps = (entry: PortfolioEntry, allEntries: PortfolioEntry[], checkedCards: Record<string, boolean>) => {
+  if (!entry.dependencies || entry.dependencies.length === 0) return false;
+  return entry.dependencies.some(depId => {
+    const dep = allEntries.find(e => e.id === depId);
+    if (!dep) return false;
+    if (dep.source !== 'proj') return false;
+    const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
+    return !isDone;
+  });
+};
+
 const getDependencyColor = (dep: PortfolioEntry, checkedCards?: Record<string, boolean>) => {
   const isDone = checkedCards && checkedCards[dep.id] !== undefined
     ? checkedCards[dep.id]
     : (dep.done || false);
-  if (!isDone) return '#ef4444'; // Red for not done
-  if (dep.source === 'proj') return '#10b981'; // Green
-  if (dep.source === 'item' || dep.source === 'cert') return '#64748b'; // Gray
-  if (dep.source === 'achv') return '#fbbf24'; // Gold
-  return '#64748b'; // Default Slate
+  if (dep.source === 'proj') {
+    return isDone ? '#10b981' : '#475569';
+  }
+  if (dep.source === 'achv') {
+    return isDone ? '#fbbf24' : '#475569';
+  }
+  if (dep.source === 'item' || dep.source === 'cert') {
+    return isDone ? '#8154c0' : '#7c6990';
+  }
+  return '#475569'; // Default Slate/Gray
 };
 
+const getDetailPanelBorderClasses = (entry: PortfolioEntry, checkedCards: Record<string, boolean>, allEntries: PortfolioEntry[]) => {
+  const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
+  if (entry.source === 'achv') {
+    return isDone
+      ? 'border-2 border-[#a3761a] bg-[#121415] dota-immortal-glow shadow-[0_0_20px_rgba(228,174,57,0.22)] pt-2'
+      : 'border-2 border-slate-400/80 bg-[#12161b] achievement-card-silver-glow shadow-[0_0_20px_rgba(148,163,184,0.15)]';
+  }
+  if (entry.source === 'proj') {
+    const hasUnfinished = hasUnfinishedProjectDeps(entry, allEntries, checkedCards);
+    const isGreen = isDone || !hasUnfinished;
+    return isGreen
+      ? 'border-2 border-emerald-500/80 bg-[#12161b] achievement-card-green-glow shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+      : 'border border-slate-800 bg-[#12161b]';
+  }
+  return 'border border-slate-800 bg-[#12161b]';
+};
+
+const getDetailPanelHeaderClasses = (entry: PortfolioEntry, checkedCards: Record<string, boolean>) => {
+  const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
+  if (entry.source === 'achv' && isDone) {
+    return 'bg-gradient-to-b from-[#181a1c] to-[#121415] border-[#a3761a]/30';
+  }
+  if (entry.source === 'proj' && isDone) {
+    return 'bg-[#15191e] border-emerald-500/30';
+  }
+  return 'bg-[#15191e] border-slate-800/80';
+};
+
+const getDetailPanelBadgeClasses = (entry: PortfolioEntry, checkedCards: Record<string, boolean>) => {
+  const isDone = checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false);
+  if (entry.source === 'achv') {
+    return isDone
+      ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30'
+      : 'bg-slate-500/5 text-slate-400 border-slate-550/20';
+  }
+  if (entry.source === 'proj') {
+    return isDone
+      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+      : 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+  }
+  return 'bg-slate-800 text-slate-400 border-slate-700';
+};
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return 'Undated';
@@ -222,6 +280,13 @@ export const App: React.FC = () => {
     return localStorage.getItem('clickToEdit') === 'true';
   });
   const [isEditingInline, setIsEditingInline] = useState<boolean>(false);
+  const [isSplitNetworkExpanded, setIsSplitNetworkExpanded] = useState<boolean>(false);
+  const [isModalNetworkExpanded, setIsModalNetworkExpanded] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsSplitNetworkExpanded(false);
+    setIsModalNetworkExpanded(false);
+  }, [selectedEntry?.id]);
 
   // Temporary view settings for Tegak Lurus panel modal (they follow/default to the sidebar HUD settings when opened)
   const [tempDreamingShowAll, setTempDreamingShowAll] = useState(dreamingShowAll);
@@ -544,12 +609,12 @@ export const App: React.FC = () => {
   const handleAcceptMatchReady = () => {
     if (soundEnabled) sfx.playTick();
     setIsAcceptingMatch(true);
+    setIsDreamingOpen(true);
+    setIsDreamingSequenceActive(true);
     setTimeout(() => {
       setIsMatchReadyPromptOpen(false);
       setIsAcceptingMatch(false);
-      setIsDreamingOpen(true);
-      setIsDreamingSequenceActive(true);
-    }, 500); // 0.5s delay
+    }, 300); // 0.3s delay (matches all-pick-exit duration)
   };
 
   const calculateRevealDelay = (entryDate: string) => {
@@ -1082,7 +1147,7 @@ export const App: React.FC = () => {
           );
         })()}
 
-        {isDreamingOpen && readViewMode === 'split' ? (
+         {isDreamingOpen && readViewMode === 'split' ? (
           <button
             onClick={() => {
               if (soundEnabled) sfx.playTick();
@@ -1101,6 +1166,7 @@ export const App: React.FC = () => {
               hover:shadow-[0_4px_0_#2a0a0a,inset_0_1px_0_rgba(255,255,255,0.08),0_0_16px_rgba(220,38,38,0.3)]
               active:shadow-[0_1px_0_#111] active:translate-y-[3px]
               ${isMatchFlashing ? 'find-match-flash' : ''}`}
+            style={{ minWidth: '190px' }}
           >
             <span className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             ✕ CLOSE VISION
@@ -1135,6 +1201,7 @@ export const App: React.FC = () => {
               shadow-[0_4px_0_#111,0_1px_0_rgba(255,255,255,0.06)_inset,0_-1px_0_rgba(0,0,0,0.5)_inset]
               active:shadow-[0_1px_0_#111] active:translate-y-[3px]
               ${isMatchFlashing ? 'find-match-flash' : ''}`}
+            style={{ minWidth: '205px' }}
           >
             <span className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             <span className="relative z-10 font-dota">FIND MATCH</span>
@@ -1255,7 +1322,7 @@ export const App: React.FC = () => {
         </aside>
 
         {/* Right Side: Timeline Display (Fills the remaining main area) */}
-        <section className="flex-1 min-w-0 h-full flex flex-col min-h-0 pb-16">
+        <section className="flex-1 min-w-0 h-full flex flex-col min-h-0">
           {/* Slim top navbar — title + split-panel size toggle, always sticky */}
           <div className="bg-[#0b0d10]/95 border-b border-slate-900/60 py-1.5 px-1 mb-3 flex items-center gap-3 shrink-0">
             <h2 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 whitespace-nowrap">
@@ -1316,7 +1383,7 @@ export const App: React.FC = () => {
               isEditingInline ? (
                 <div className={`min-w-0 h-full flex flex-col min-h-0 overflow-hidden animate-fadeIn transition-all duration-300 ${
                   splitPanelSize === '25' ? 'w-1/4 min-w-[290px] flex-none' : 'w-1/2 flex-1'
-                }`}>
+                } pb-20`}>
                   <AddInstanceModal
                     isOpen={true}
                     onClose={() => {
@@ -1346,24 +1413,18 @@ export const App: React.FC = () => {
                 const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
                 const isDoneAchievement = selectedEntry.source === 'achv' && (checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false));
                 return (
-                  <div className={`min-w-0 h-full flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${splitPanelSize === '25' ? 'w-1/4 min-w-[290px] flex-none' : 'w-1/2 flex-1'}`}>
-                    <div className={`flex flex-col shadow-2xl overflow-hidden h-full relative ${
-                      isDoneAchievement 
-                        ? 'bg-[#121415] border-2 border-[#a3761a] rounded-xl pt-2' 
-                        : 'bg-[#12161b] border border-slate-800 rounded-xl'
+                  <div className={`min-w-0 h-full flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${splitPanelSize === '25' ? 'w-1/4 min-w-[290px] flex-none' : 'w-1/2 flex-1'} pb-20`}>
+                    <div className={`flex flex-col shadow-2xl overflow-hidden h-full relative detail-panel-no-hover ${
+                      getDetailPanelBorderClasses(selectedEntry, checkedCards, entries)
                     }`}>
                       {isDoneAchievement && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
                       {/* Split Panel Header */}
                       <div className={`p-4 border-b flex items-start justify-between gap-3 shrink-0 ${
-                        isDoneAchievement 
-                          ? 'bg-gradient-to-b from-[#181a1c] to-[#121415] border-[#a3761a]/30' 
-                          : 'bg-[#15191e] border-slate-800'
+                        getDetailPanelHeaderClasses(selectedEntry, checkedCards)
                       }`}>
                         <div className="min-w-0">
                           <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 ${
-                            isDoneAchievement 
-                              ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30' 
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                            getDetailPanelBadgeClasses(selectedEntry, checkedCards)
                           }`}>
                             {isDoneAchievement ? 'IMMORTAL' : selectedEntry.source}
                           </span>
@@ -1438,52 +1499,63 @@ export const App: React.FC = () => {
                       <div className="flex-1 overflow-y-auto p-5 prose prose-invert max-w-none text-slate-300 text-sm">
                         {validDeps.length > 0 && (
                           <div className="mb-5 p-3 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
-                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
-                              <span>Connection Network</span>
+                            <div 
+                              onClick={() => {
+                                if (soundEnabled) sfx.playTick();
+                                setIsSplitNetworkExpanded(!isSplitNetworkExpanded);
+                              }}
+                              className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between cursor-pointer hover:text-slate-350 select-none"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                {isSplitNetworkExpanded ? <ChevronDown size={12} className="text-slate-400" /> : <ChevronRight size={12} className="text-slate-400" />}
+                                <span>Connection Network</span>
+                              </div>
                               <span className="text-[9px] text-slate-600 font-medium normal-case">Hover • Click to navigate</span>
                             </div>
-                            <div className="relative w-full" style={{ height: `${Math.max(80, validDeps.length * 32 + 32)}px` }}>
-                              <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(80, validDeps.length * 32 + 32)}`} preserveAspectRatio="xMidYMid meet">
-                                {validDeps.map((dep, idx) => {
-                                  const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
-                                  const yS = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
-                                  const yE = svgH / 2; const dx2 = (370 - 50) / 2;
-                                  const isH = hoveredDepId === dep.id;
-                                  const c = getDependencyColor(dep, checkedCards);
-                                  return <path key={dep.id} d={`M 50 ${yS} C ${50 + dx2} ${yS}, ${370 - dx2} ${yE}, 370 ${yE}`} fill="none" stroke={isH ? c : 'rgba(148,163,184,0.18)'} strokeWidth={isH ? 2.5 : 1.2} className="transition-all duration-200" />;
-                                })}
-                                {validDeps.map((dep, idx) => {
-                                  const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
-                                  const y = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
-                                  const isH = hoveredDepId === dep.id;
-                                  const c = getDependencyColor(dep, checkedCards);
-                                  const lbl = dep.title.length > 20 ? dep.title.slice(0, 19) + '…' : dep.title;
-                                  return (
-                                    <g key={dep.id} className="cursor-pointer" onMouseEnter={() => setHoveredDepId(dep.id)} onMouseLeave={() => setHoveredDepId(null)} onClick={() => navigateToEntry(dep, 'click')}>
-                                      <circle cx={50} cy={y} r={isH ? 12 : 0} fill={c} opacity={0.25} className="transition-all duration-200" />
-                                      <circle cx={50} cy={y} r={7} fill={c} stroke={isH ? '#fff' : 'rgba(0,0,0,0.5)'} strokeWidth={1.5} className="transition-all duration-200" />
-                                      <text x={64} y={y + 4} fontSize={9} fill={isH ? '#e2e8f0' : '#64748b'} fontFamily="ui-monospace,monospace" fontWeight={isH ? 700 : 500} className="pointer-events-none select-none">{lbl}</text>
-                                    </g>
-                                  );
-                                })}
-                                {(() => {
-                                  const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
-                                  const y = svgH / 2; const c = getDependencyColor(selectedEntry, checkedCards);
-                                  const lbl = selectedEntry.title.length > 12 ? selectedEntry.title.slice(0, 11) + '…' : selectedEntry.title;
-                                  return (
-                                    <g>
-                                      <circle cx={370} cy={y} r={16} fill={c} opacity={0.15} />
-                                      <circle cx={370} cy={y} r={10} fill={c} stroke="rgba(0,0,0,0.6)" strokeWidth={2} />
-                                      <circle cx={370} cy={y} r={3} fill="#fff" />
-                                      <text x={386} y={y + 4} fontSize={9} fill="#cbd5e1" fontFamily="ui-monospace,monospace" fontWeight={700} className="pointer-events-none select-none">{lbl}</text>
-                                    </g>
-                                  );
-                                })()}
-                              </svg>
-                            </div>
+                            
+                            {isSplitNetworkExpanded && (
+                              <div className="relative w-full mt-3 animate-fadeIn" style={{ height: `${Math.max(80, validDeps.length * 32 + 32)}px` }}>
+                                <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(80, validDeps.length * 32 + 32)}`} preserveAspectRatio="xMidYMid meet">
+                                  {validDeps.map((dep, idx) => {
+                                    const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
+                                    const yS = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
+                                    const yE = svgH / 2; const dx2 = (370 - 50) / 2;
+                                    const isH = hoveredDepId === dep.id;
+                                    const c = getDependencyColor(dep, checkedCards);
+                                    return <path key={dep.id} d={`M 50 ${yS} C ${50 + dx2} ${yS}, ${370 - dx2} ${yE}, 370 ${yE}`} fill="none" stroke={isH ? c : 'rgba(148,163,184,0.18)'} strokeWidth={isH ? 2.5 : 1.2} className="transition-all duration-200" />;
+                                  })}
+                                  {validDeps.map((dep, idx) => {
+                                    const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
+                                    const y = N === 1 ? svgH / 2 : 24 + idx * ((svgH - 48) / Math.max(N - 1, 1));
+                                    const isH = hoveredDepId === dep.id;
+                                    const c = getDependencyColor(dep, checkedCards);
+                                    const lbl = dep.title.length > 20 ? dep.title.slice(0, 19) + '…' : dep.title;
+                                    return (
+                                      <g key={dep.id} className="cursor-pointer" onMouseEnter={() => setHoveredDepId(dep.id)} onMouseLeave={() => setHoveredDepId(null)} onClick={() => navigateToEntry(dep, 'click')}>
+                                        <circle cx={50} cy={y} r={isH ? 12 : 0} fill={c} opacity={0.25} className="transition-all duration-200" />
+                                        <circle cx={50} cy={y} r={7} fill={c} stroke={isH ? '#fff' : 'rgba(0,0,0,0.5)'} strokeWidth={1.5} className="transition-all duration-200" />
+                                        <text x={64} y={y + 4} fontSize={9} fill={isH ? '#e2e8f0' : '#64748b'} fontFamily="ui-monospace,monospace" fontWeight={isH ? 700 : 500} className="pointer-events-none select-none">{lbl}</text>
+                                      </g>
+                                    );
+                                  })}
+                                  {(() => {
+                                    const N = validDeps.length; const svgH = Math.max(80, N * 32 + 32);
+                                    const y = svgH / 2; const c = getDependencyColor(selectedEntry, checkedCards);
+                                    const lbl = selectedEntry.title.length > 12 ? selectedEntry.title.slice(0, 11) + '…' : selectedEntry.title;
+                                    return (
+                                      <g>
+                                        <circle cx={370} cy={y} r={16} fill={c} opacity={0.15} />
+                                        <circle cx={370} cy={y} r={10} fill={c} stroke="rgba(0,0,0,0.6)" strokeWidth={2} />
+                                        <circle cx={370} cy={y} r={3} fill="#fff" />
+                                        <text x={386} y={y + 4} fontSize={9} fill="#cbd5e1" fontFamily="ui-monospace,monospace" fontWeight={700} className="pointer-events-none select-none">{lbl}</text>
+                                      </g>
+                                    );
+                                  })()}
+                                </svg>
+                              </div>
+                            )}
                           </div>
                         )}
-
                         {selectedEntry.imgPath && (
                           selectedEntry.imgPath.toLowerCase().endsWith('.pdf') ? (
                             <div className="w-full h-[300px] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 mb-4">
@@ -1544,23 +1616,17 @@ export const App: React.FC = () => {
         const isDoneAchievement = selectedEntry.source === 'achv' && (checkedCards[selectedEntry.id] !== undefined ? checkedCards[selectedEntry.id] : (selectedEntry.done || false));
         return (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-            <div className={`max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative ${
-              isDoneAchievement 
-                ? 'bg-[#121415] border-2 border-[#a3761a] rounded-xl pt-2' 
-                : 'bg-[#12161b] border-2 border-slate-800 rounded-xl'
+            <div className={`max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative detail-panel-no-hover ${
+              getDetailPanelBorderClasses(selectedEntry, checkedCards, entries)
             }`}>
               {isDoneAchievement && <div className="absolute top-0 left-0 right-0 dota-immortal-topbar z-20" />}
               {/* Modal Header */}
               <div className={`p-4 border-b flex justify-between items-center ${
-                isDoneAchievement 
-                  ? 'bg-gradient-to-b from-[#181a1c] to-[#121415] border-[#a3761a]/30' 
-                  : 'bg-[#15191e] border-slate-800'
+                getDetailPanelHeaderClasses(selectedEntry, checkedCards)
               }`}>
                 <div>
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 ${
-                    isDoneAchievement 
-                      ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30' 
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                    getDetailPanelBadgeClasses(selectedEntry, checkedCards)
                   }`}>
                     {isDoneAchievement ? 'IMMORTAL' : selectedEntry.source}
                   </span>
@@ -1645,140 +1711,155 @@ export const App: React.FC = () => {
 
                   return (
                     <div className="mb-6 p-4 rounded-xl border border-slate-800 bg-[#0d1013]/60 relative select-none">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
-                        <span>Connection Network</span>
+                      <div 
+                        onClick={() => {
+                          if (soundEnabled) sfx.playTick();
+                          setIsModalNetworkExpanded(!isModalNetworkExpanded);
+                        }}
+                        className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between cursor-pointer hover:text-slate-350 select-none"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {isModalNetworkExpanded ? <ChevronDown size={12} className="text-slate-400" /> : <ChevronRight size={12} className="text-slate-400" />}
+                          <span>Connection Network</span>
+                        </div>
                         <span className="text-[9px] text-slate-650 font-medium normal-case">Hover to identify • Click to navigate</span>
                       </div>
-                      <div className="relative w-full" style={{ height: `${Math.max(100, validDeps.length * 36 + 40)}px` }}>
-                        <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(100, validDeps.length * 36 + 40)}`} preserveAspectRatio="xMidYMid meet">
-                          {/* Draw Wires */}
-                          {validDeps.map((dep, idx) => {
-                            const N = validDeps.length;
-                            const svgH = Math.max(100, N * 36 + 40);
-                            const yStart = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
-                            const yEnd = svgH / 2;
-                            const xStart = 50;
-                            const xEnd = 370;
-                            const dx = (xEnd - xStart) / 2;
-                            const pathD = `M ${xStart} ${yStart} C ${xStart + dx} ${yStart}, ${xEnd - dx} ${yEnd}, ${xEnd} ${yEnd}`;
-                            const isHovered = hoveredDepId === dep.id;
-                            const depColor = getDependencyColor(dep, checkedCards);
+                      {isModalNetworkExpanded && (
+                        <div className="relative w-full mt-3 animate-fadeIn" style={{ height: `${Math.max(100, validDeps.length * 36 + 40)}px` }}>
+                          <svg className="w-full h-full" viewBox={`0 0 500 ${Math.max(100, validDeps.length * 36 + 40)}`} preserveAspectRatio="xMidYMid meet">
+                            {/* Draw Wires */}
+                            {validDeps.map((dep, idx) => {
+                              const N = validDeps.length;
+                              const svgH = Math.max(100, N * 36 + 40);
+                              const yStart = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
+                              const yEnd = svgH / 2;
+                              const xStart = 50;
+                              const xEnd = 370;
+                              const dx = (xEnd - xStart) / 2;
+                              const pathD = `M ${xStart} ${yStart} C ${xStart + dx} ${yStart}, ${xEnd - dx} ${yEnd}, ${xEnd} ${yEnd}`;
+                              const isHovered = hoveredDepId === dep.id;
+                              const depColor = getDependencyColor(dep, checkedCards);
 
-                            return (
-                              <path
-                                key={`wire-${dep.id}`}
-                                d={pathD}
-                                fill="none"
-                                stroke={isHovered ? depColor : "rgba(148, 163, 184, 0.18)"}
-                                strokeWidth={isHovered ? 2.5 : 1.2}
-                                className="transition-all duration-350 ease-out"
-                              />
-                            );
-                          })}
+                              const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
+                              const isAnimated = !isDone && (dep.source === 'item' || dep.source === 'cert');
 
-                          {/* Draw Left Nodes (Dependencies) */}
-                          {validDeps.map((dep, idx) => {
-                            const N = validDeps.length;
-                            const svgH = Math.max(100, N * 36 + 40);
-                            const y = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
-                            const x = 50;
-                            const depColor = getDependencyColor(dep, checkedCards);
-                            const isHovered = hoveredDepId === dep.id;
-                            // Truncate title to ~22 chars for the label
-                            const label = dep.title.length > 22 ? dep.title.slice(0, 21) + '…' : dep.title;
+                              return (
+                                <path
+                                  key={`wire-${dep.id}`}
+                                  d={pathD}
+                                  fill="none"
+                                  stroke={depColor}
+                                  strokeWidth={isHovered ? 2.5 : 1.2}
+                                  className={`transition-all duration-350 ease-out ${isAnimated ? 'animate-pathway-flow' : ''}`}
+                                  opacity={isHovered ? 1.0 : 0.45}
+                                />
+                              );
+                            })}
 
-                            return (
-                              <g
-                                key={`node-dep-${dep.id}`}
-                                className="cursor-pointer group"
-                                onMouseEnter={() => setHoveredDepId(dep.id)}
-                                onMouseLeave={() => setHoveredDepId(null)}
-                                onClick={() => navigateToEntry(dep, 'click')}>
-                                {/* Outer Glow on Hover */}
-                                <circle
-                                  cx={x}
-                                  cy={y}
-                                  r={isHovered ? 12 : 0}
-                                  fill={depColor}
-                                  opacity={0.25}
-                                  className="transition-all duration-200"
-                                />
-                                {/* Inner Circle */}
-                                <circle
-                                  cx={x}
-                                  cy={y}
-                                  r={7}
-                                  fill={depColor}
-                                  stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"}
-                                  strokeWidth={1.5}
-                                  className="transition-all duration-200"
-                                />
-                                {/* Label to the right of the node */}
-                                <text
-                                  x={x + 14}
-                                  y={y + 4}
-                                  fontSize={10}
-                                  fill={isHovered ? '#e2e8f0' : '#64748b'}
-                                  fontFamily="ui-monospace, monospace"
-                                  fontWeight={isHovered ? 700 : 500}
-                                  className="transition-all duration-200 pointer-events-none select-none"
-                                >
-                                  {label}
-                                </text>
-                              </g>
-                            );
-                          })}
+                            {/* Draw Left Nodes (Dependencies) */}
+                            {validDeps.map((dep, idx) => {
+                              const N = validDeps.length;
+                              const svgH = Math.max(100, N * 36 + 40);
+                              const y = N === 1 ? svgH / 2 : 28 + idx * ((svgH - 56) / Math.max(N - 1, 1));
+                              const x = 50;
+                              const depColor = getDependencyColor(dep, checkedCards);
+                              const isHovered = hoveredDepId === dep.id;
+                              // Truncate title to ~22 chars for the label
+                              const label = dep.title.length > 22 ? dep.title.slice(0, 21) + '…' : dep.title;
 
-                          {/* Draw Right Node (Current Card) */}
-                          {(() => {
-                            const N = validDeps.length;
-                            const svgH = Math.max(100, N * 36 + 40);
-                            const x = 370;
-                            const y = svgH / 2;
-                            const currentColor = getDependencyColor(selectedEntry, checkedCards);
-                            const label = selectedEntry.title.length > 14 ? selectedEntry.title.slice(0, 13) + '…' : selectedEntry.title;
-                            return (
-                              <g className="cursor-default">
-                                {/* Glow */}
-                                <circle
-                                  cx={x}
-                                  cy={y}
-                                  r={16}
-                                  fill={currentColor}
-                                  opacity={0.15}
-                                />
-                                <circle
-                                  cx={x}
-                                  cy={y}
-                                  r={10}
-                                  fill={currentColor}
-                                  stroke="rgba(0,0,0,0.6)"
-                                  strokeWidth={2}
-                                />
-                                {/* Central dot */}
-                                <circle
-                                  cx={x}
-                                  cy={y}
-                                  r={3}
-                                  fill="#ffffff"
-                                />
-                                {/* Label to the right of the current node */}
-                                <text
-                                  x={x + 16}
-                                  y={y + 4}
-                                  fontSize={10}
-                                  fill="#cbd5e1"
-                                  fontFamily="ui-monospace, monospace"
-                                  fontWeight={700}
-                                  className="pointer-events-none select-none"
-                                >
-                                  {label}
-                                </text>
-                              </g>
-                            );
-                          })()}
-                        </svg>
-                      </div>
+                              return (
+                                <g
+                                  key={`node-dep-${dep.id}`}
+                                  className="cursor-pointer group"
+                                  onMouseEnter={() => setHoveredDepId(dep.id)}
+                                  onMouseLeave={() => setHoveredDepId(null)}
+                                  onClick={() => navigateToEntry(dep, 'click')}>
+                                  {/* Outer Glow on Hover */}
+                                  <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={isHovered ? 12 : 0}
+                                    fill={depColor}
+                                    opacity={0.25}
+                                    className="transition-all duration-200"
+                                  />
+                                  {/* Inner Circle */}
+                                  <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={7}
+                                    fill={depColor}
+                                    stroke={isHovered ? "#ffffff" : "rgba(0,0,0,0.5)"}
+                                    strokeWidth={1.5}
+                                    className="transition-all duration-200"
+                                  />
+                                  {/* Label to the right of the node */}
+                                  <text
+                                    x={x + 14}
+                                    y={y + 4}
+                                    fontSize={10}
+                                    fill={isHovered ? '#e2e8f0' : '#64748b'}
+                                    fontFamily="ui-monospace, monospace"
+                                    fontWeight={isHovered ? 700 : 500}
+                                    className="transition-all duration-200 pointer-events-none select-none"
+                                  >
+                                    {label}
+                                  </text>
+                                </g>
+                              );
+                            })}
+
+                            {/* Draw Right Node (Current Card) */}
+                            {(() => {
+                              const N = validDeps.length;
+                              const svgH = Math.max(100, N * 36 + 40);
+                              const x = 370;
+                              const y = svgH / 2;
+                              const currentColor = getDependencyColor(selectedEntry, checkedCards);
+                              const label = selectedEntry.title.length > 14 ? selectedEntry.title.slice(0, 13) + '…' : selectedEntry.title;
+                              return (
+                                <g className="cursor-default">
+                                  {/* Glow */}
+                                  <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={16}
+                                    fill={currentColor}
+                                    opacity={0.15}
+                                  />
+                                  <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={10}
+                                    fill={currentColor}
+                                    stroke="rgba(0,0,0,0.6)"
+                                    strokeWidth={2}
+                                  />
+                                  {/* Central dot */}
+                                  <circle
+                                    cx={x}
+                                    cy={y}
+                                    r={3}
+                                    fill="#ffffff"
+                                  />
+                                  {/* Label to the right of the current node */}
+                                  <text
+                                    x={x + 16}
+                                    y={y + 4}
+                                    fontSize={10}
+                                    fill="#cbd5e1"
+                                    fontFamily="ui-monospace, monospace"
+                                    fontWeight={700}
+                                    className="pointer-events-none select-none"
+                                  >
+                                    {label}
+                                  </text>
+                                </g>
+                              );
+                            })()}
+                          </svg>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -2052,7 +2133,9 @@ export const App: React.FC = () => {
                                 onMore: handleMoreClick,
                                 thinnerCard,
                                 isChecked: checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false),
-                                onToggleChecked: toggleCardChecked
+                                onToggleChecked: toggleCardChecked,
+                                hasUnfinishedProjectDeps: hasUnfinishedProjectDeps(entry, entries, checkedCards),
+                                dependentsCount: entries.filter(e => e.dependencies?.includes(entry.id)).length,
                               };
 
                               const isRevealed = !matchReadySimEnabled || !isDreamingSequenceActive || !!revealedCardIds[entry.id];

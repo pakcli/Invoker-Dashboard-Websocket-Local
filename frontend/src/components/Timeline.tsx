@@ -25,6 +25,7 @@ interface Connection {
   toId: string;    // dependency entry (pointed to)
   d: string;
   color: string;
+  isAnimated?: boolean;
   xStart: number;
   yStart: number;
   xEnd: number;
@@ -52,14 +53,29 @@ const getMonthYearLabel = (dateStr: string) => {
   return dateStr;
 };
 
+const hasUnfinishedProjectDeps = (entry: PortfolioEntry, allEntries: PortfolioEntry[], checkedCards: Record<string, boolean>) => {
+  if (!entry.dependencies || entry.dependencies.length === 0) return false;
+  return entry.dependencies.some(depId => {
+    const dep = allEntries.find(e => e.id === depId);
+    if (!dep) return false;
+    if (dep.source !== 'proj') return false;
+    const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
+    return !isDone;
+  });
+};
+
 const getDependencyColor = (dep: PortfolioEntry, checkedCards: Record<string, boolean>) => {
   const isDone = checkedCards[dep.id] !== undefined ? checkedCards[dep.id] : (dep.done || false);
-  if (!isDone) return '#ef4444'; // Red for not done
-
-  if (dep.source === 'proj') return '#10b981'; // Green
-  if (dep.source === 'item' || dep.source === 'cert') return '#64748b'; // Gray
-  if (dep.source === 'achv') return '#fbbf24'; // Gold
-  return '#64748b'; // Default Slate
+  if (dep.source === 'proj') {
+    return isDone ? '#10b981' : '#475569';
+  }
+  if (dep.source === 'achv') {
+    return isDone ? '#fbbf24' : '#475569';
+  }
+  if (dep.source === 'item' || dep.source === 'cert') {
+    return isDone ? '#8154c0' : '#7c6990';
+  }
+  return '#475569'; // Default Slate/Gray
 };
 
 export const Timeline: React.FC<TimelineProps> = ({
@@ -197,12 +213,16 @@ export const Timeline: React.FC<TimelineProps> = ({
           // S-curve bezier
           const d = `M ${xStart} ${yStart} C ${xStart} ${cpStart}, ${xEnd} ${cpEnd}, ${xEnd} ${yEnd}`;
 
+          const isDone = checkedCards[depEntry.id] !== undefined ? checkedCards[depEntry.id] : (depEntry.done || false);
+          const isAnimated = !isDone && (depEntry.source === 'item' || depEntry.source === 'cert');
+
           newConnections.push({
             id: `${entry.id}-${depEntry.id}`,
             fromId: entry.id,
             toId: depEntry.id,
             d,
             color: getDependencyColor(depEntry, checkedCards),
+            isAnimated,
             xStart,
             yStart,
             xEnd,
@@ -309,6 +329,8 @@ export const Timeline: React.FC<TimelineProps> = ({
       thinnerCard,
       isChecked: checkedCards[entry.id] !== undefined ? checkedCards[entry.id] : (entry.done || false),
       onToggleChecked,
+      hasUnfinishedProjectDeps: hasUnfinishedProjectDeps(entry, entries, checkedCards),
+      dependentsCount: entries.filter(e => e.dependencies?.includes(entry.id)).length,
     };
 
     let cardElement: React.ReactNode = null;
@@ -458,6 +480,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                   fill="none"
                   stroke={conn.color}
                   strokeWidth={isRelated ? 1.8 : 1.2}
+                  className={conn.isAnimated ? 'animate-pathway-flow' : undefined}
                 />
 
                 {/* Bottom socket (on dependent card — outgoing port) */}

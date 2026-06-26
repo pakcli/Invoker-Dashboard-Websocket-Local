@@ -11,6 +11,7 @@ interface CardProps {
   thinnerCard?: boolean;
   isChecked?: boolean;
   onToggleChecked?: (id: string) => void;
+  dependentsCount?: number;
 }
 
 const getOrbColors = (skillStr: string | undefined) => {
@@ -58,21 +59,29 @@ const getOrbColors = (skillStr: string | undefined) => {
   ];
 };
 
-export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thinnerCard, isChecked = false, onToggleChecked }) => {
+export const AchievementCard: React.FC<CardProps> = ({ 
+  entry, 
+  onOpenFolder, 
+  onMore, 
+  thinnerCard, 
+  isChecked = false, 
+  onToggleChecked,
+  dependentsCount = 0
+}) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   const borderAndGlowClasses = isChecked
     ? 'dota-immortal-glow border-[#a3761a] hover:border-[#e4ae39] shadow-[0_0_20px_rgba(228,174,57,0.15)] pt-4'
-    : 'border-emerald-500/80 achievement-card-green-glow shadow-[0_0_20px_rgba(16,185,129,0.25)]';
+    : 'border-slate-400/80 achievement-card-silver-glow shadow-[0_0_20px_rgba(148,163,184,0.15)]';
 
   const badgeClasses = isChecked 
     ? 'bg-amber-500/5 text-[#e4ae39] border-[#e4ae39]/30'
-    : 'bg-emerald-500/5 text-emerald-400 border-emerald-500/20';
+    : 'bg-slate-500/5 text-slate-400 border-slate-550/20';
 
   return (
     <div 
       onClick={() => onMore(entry)}
-      className={`bg-[#121418]/90 border-[3px] rounded-xl hover:border-slate-200/60 transition-all duration-300 group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${borderAndGlowClasses} ${
+      className={`bg-[#121418]/90 border-[3px] rounded-xl transition-all duration-300 group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${borderAndGlowClasses} ${
         thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'h-[396px] p-5'
       }`}
     >
@@ -208,27 +217,38 @@ export const AchievementCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMo
           </button>
         </div>
 
-        {onToggleChecked && (
-          <label 
-            onClick={(e) => e.stopPropagation()} 
-            className={`flex items-center gap-1.5 text-[10px] cursor-pointer select-none font-semibold uppercase tracking-wider ml-2 ${
-              isChecked ? 'text-[#e4ae39] hover:text-amber-300' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={isChecked}
-              onChange={(e) => {
-                e.stopPropagation();
-                onToggleChecked(entry.id);
-              }}
-              className="w-3.5 h-3.5 rounded border-slate-700 text-amber-500 focus:ring-[#e4ae39]/20 bg-slate-900 cursor-pointer"
-            />
-            <span>Done</span>
-          </label>
-        )}
-      </div>
+        <div className="flex items-center gap-3 ml-auto">
+          {dependentsCount > 0 && (
+            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-450 select-none" title={`${dependentsCount} Dependents (Outputs)`}>
+              <div className="relative w-4 h-3.5 shrink-0 opacity-70">
+                <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-slate-500" />
+              </div>
+              <span className="tabular-nums">({dependentsCount})</span>
+            </div>
+          )}
 
+          {onToggleChecked && (
+            <label 
+              onClick={(e) => e.stopPropagation()} 
+              className={`flex items-center gap-1.5 text-[10px] cursor-pointer select-none font-semibold uppercase tracking-wider ml-1 ${
+                isChecked ? 'text-[#e4ae39] hover:text-amber-300' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  onToggleChecked(entry.id);
+                }}
+                className="w-3.5 h-3.5 rounded border-slate-700 text-amber-500 focus:ring-[#e4ae39]/20 bg-slate-900 cursor-pointer"
+              />
+            </label>
+          )}
+        </div>
+      </div>
       {/* Gold Bottom Bar for Immortal Card */}
       {isChecked && <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#a3761a] via-[#e4ae39] to-[#a3761a]" />}
     </div>

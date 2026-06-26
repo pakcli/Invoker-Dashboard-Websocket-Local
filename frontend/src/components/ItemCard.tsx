@@ -11,6 +11,7 @@ interface CardProps {
   thinnerCard?: boolean;
   isChecked?: boolean;
   onToggleChecked?: (id: string) => void;
+  dependentsCount?: number;
 }
 
 const getOrbColors = (skillStr: string | undefined) => {
@@ -58,7 +59,15 @@ const getOrbColors = (skillStr: string | undefined) => {
   ];
 };
 
-export const ItemCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thinnerCard, isChecked = false, onToggleChecked }) => {
+export const ItemCard: React.FC<CardProps> = ({ 
+  entry, 
+  onOpenFolder, 
+  onMore, 
+  thinnerCard, 
+  isChecked = false, 
+  onToggleChecked,
+  dependentsCount = 0
+}) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
   return (
@@ -152,23 +161,36 @@ export const ItemCard: React.FC<CardProps> = ({ entry, onOpenFolder, onMore, thi
           </button>
         </div>
 
-        {onToggleChecked && (
-          <label 
-            onClick={(e) => e.stopPropagation()} 
-            className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-slate-200 cursor-pointer select-none font-semibold uppercase tracking-wider ml-2"
-          >
-            <input
-              type="checkbox"
-              checked={isChecked}
-              onChange={(e) => {
-                e.stopPropagation();
-                onToggleChecked(entry.id);
-              }}
-              className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900 cursor-pointer"
-            />
-            <span>Done</span>
-          </label>
-        )}
+        <div className="flex items-center gap-3 ml-auto">
+          {dependentsCount > 0 && (
+            <div className="flex items-center gap-1 text-[10px] font-bold text-slate-450 select-none" title={`${dependentsCount} Dependents (Outputs)`}>
+              <div className="relative w-4 h-3.5 shrink-0 opacity-70">
+                <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-slate-500" />
+              </div>
+              <span className="tabular-nums">({dependentsCount})</span>
+            </div>
+          )}
+
+          {onToggleChecked && (
+            <label 
+              onClick={(e) => e.stopPropagation()} 
+              className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-slate-200 cursor-pointer select-none font-semibold uppercase tracking-wider ml-1"
+            >
+              <input
+                type="checkbox"
+                checked={isChecked}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  onToggleChecked(entry.id);
+                }}
+                className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900 cursor-pointer"
+              />
+              <span>Done</span>
+            </label>
+          )}
+        </div>
       </div>
     </div>
   );

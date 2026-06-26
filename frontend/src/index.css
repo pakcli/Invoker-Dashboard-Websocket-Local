@@ -77,7 +77,7 @@
   box-shadow: 0 0 22px rgba(228, 174, 57, 0.22), inset 0 0 0 1.5px rgba(228, 174, 57, 0.5), inset 0 0 6px rgba(228, 174, 57, 0.15) !important;
 }
 
-.dota-immortal-glow:hover {
+.dota-immortal-glow:hover:not(.detail-panel-no-hover) {
   border-color: #e4ae39 !important;
   box-shadow: 0 0 30px rgba(228, 174, 57, 0.45), inset 0 0 0 2px rgba(228, 174, 57, 0.7), inset 0 0 8px rgba(228, 174, 57, 0.25) !important;
 }
@@ -150,22 +150,32 @@ body.light ::-webkit-scrollbar-thumb:hover {
 }
 
 .achievement-card-glow {
-  box-shadow: 0 0 25px rgba(212, 175, 80, 0.55), inset 0 0 0 2.5px rgba(212, 175, 80, 0.8), inset 0 0 6px rgba(212, 175, 80, 0.2) !important;
+  box-shadow: 0 0 25px rgba(212, 175, 80, 0.55) !important;
   border-color: rgba(212, 175, 80, 0.8) !important;
 }
 
-.achievement-card-glow:hover {
-  box-shadow: 0 0 35px rgba(212, 175, 80, 0.85), inset 0 0 0 3.5px rgba(212, 175, 80, 0.95), inset 0 0 8px rgba(212, 175, 80, 0.3) !important;
+.achievement-card-glow:hover:not(.detail-panel-no-hover) {
+  box-shadow: 0 0 35px rgba(212, 175, 80, 0.85) !important;
   border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
 .achievement-card-green-glow {
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.55), inset 0 0 0 2.5px rgba(16, 185, 129, 0.8), inset 0 0 6px rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.55) !important;
   border-color: rgba(16, 185, 129, 0.8) !important;
 }
 
-.achievement-card-green-glow:hover {
-  box-shadow: 0 0 35px rgba(16, 185, 129, 0.85), inset 0 0 0 3.5px rgba(16, 185, 129, 0.95), inset 0 0 8px rgba(16, 185, 129, 0.3) !important;
+.achievement-card-green-glow:hover:not(.detail-panel-no-hover) {
+  box-shadow: 0 0 35px rgba(16, 185, 129, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.achievement-card-silver-glow {
+  box-shadow: 0 0 25px rgba(148, 163, 184, 0.45) !important;
+  border-color: rgba(148, 163, 184, 0.7) !important;
+}
+
+.achievement-card-silver-glow:hover:not(.detail-panel-no-hover) {
+  box-shadow: 0 0 35px rgba(148, 163, 184, 0.75) !important;
   border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
@@ -362,3 +372,15 @@ body.light ::-webkit-scrollbar-thumb:hover {
   pointer-events: none;
   animation: border-scale-out 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes path-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.animate-pathway-flow {
+  stroke-dasharray: 6, 4;
+  animation: path-flow 1.2s linear infinite;
+}
+
