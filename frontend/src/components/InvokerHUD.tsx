@@ -28,6 +28,8 @@ interface HUDProps {
   setNodeLineMode: (mode: 'focus' | 'focus-no-offset' | 'all') => void;
   readViewMode: 'popup' | 'split';
   setReadViewMode: (mode: 'popup' | 'split') => void;
+  splitPanelSize: '25' | '50';
+  setSplitPanelSize: (size: '25' | '50') => void;
   clickToEdit: boolean;
   setClickToEdit: (val: boolean) => void;
   matchReadySimEnabled: boolean;
@@ -66,6 +68,8 @@ export const InvokerHUD: React.FC<HUDProps> = ({
   setNodeLineMode,
   readViewMode,
   setReadViewMode,
+  splitPanelSize,
+  setSplitPanelSize,
   clickToEdit,
   setClickToEdit,
   matchReadySimEnabled,
@@ -605,6 +609,38 @@ export const InvokerHUD: React.FC<HUDProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Split Panel Size Toggle (only relevant when Split View) */}
+      {readViewMode === 'split' && (
+        <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+          <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <span>Split Panel Size</span>
+            <span className="text-slate-400 font-bold">{splitPanelSize === '25' ? '25%' : '50%'}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+            <button
+              onClick={() => setSplitPanelSize('25')}
+              className={`py-1.5 text-[10px] font-bold rounded transition-all ${
+                splitPanelSize === '25'
+                  ? 'bg-[#15191e] text-emerald-400 shadow-sm border border-slate-800/50'
+                  : 'text-slate-500 hover:text-slate-350'
+              }`}
+            >
+              25%
+            </button>
+            <button
+              onClick={() => setSplitPanelSize('50')}
+              className={`py-1.5 text-[10px] font-bold rounded transition-all ${
+                splitPanelSize === '50'
+                  ? 'bg-[#15191e] text-purple-400 shadow-sm border border-slate-800/50'
+                  : 'text-slate-500 hover:text-slate-350'
+              }`}
+            >
+              50%
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Click to Edit Toggle */}
       <div className="pt-3 border-t border-slate-800 flex flex-col gap-1.5">

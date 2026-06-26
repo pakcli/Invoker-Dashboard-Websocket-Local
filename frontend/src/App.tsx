@@ -170,6 +170,9 @@ export const App: React.FC = () => {
   const [readViewMode, setReadViewMode] = useState<'popup' | 'split'>(() => {
     return (localStorage.getItem('readViewMode') as 'popup' | 'split') || 'popup';
   });
+  const [splitPanelSize, setSplitPanelSize] = useState<'25' | '50'>(() => {
+    return (localStorage.getItem('splitPanelSize') as '25' | '50') || '50';
+  });
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [clickToEdit, setClickToEdit] = useState<boolean>(() => {
@@ -968,6 +971,8 @@ export const App: React.FC = () => {
             setNodeLineMode={(m) => { setNodeLineMode(m); localStorage.setItem('nodeLineMode', m); }}
             readViewMode={readViewMode}
             setReadViewMode={(m) => { setReadViewMode(m); localStorage.setItem('readViewMode', m); }}
+            splitPanelSize={splitPanelSize}
+            setSplitPanelSize={(s) => { setSplitPanelSize(s); localStorage.setItem('splitPanelSize', s); }}
             clickToEdit={clickToEdit}
             setClickToEdit={setClickToEdit}
             matchReadySimEnabled={matchReadySimEnabled}
@@ -993,6 +998,26 @@ export const App: React.FC = () => {
                   </span>
                 )}
               </h2>
+              {readViewMode === 'split' && selectedEntry && (
+                <div className="flex items-center gap-1 p-0.5 bg-slate-950/80 border border-slate-800/80 rounded-lg">
+                  <button
+                    onClick={() => { setSplitPanelSize('25'); localStorage.setItem('splitPanelSize', '25'); }}
+                    className={`px-2 py-0.5 text-[9px] font-black rounded transition-all ${
+                      splitPanelSize === '25'
+                        ? 'bg-[#15191e] text-emerald-400 border border-slate-700/50'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >25%</button>
+                  <button
+                    onClick={() => { setSplitPanelSize('50'); localStorage.setItem('splitPanelSize', '50'); }}
+                    className={`px-2 py-0.5 text-[9px] font-black rounded transition-all ${
+                      splitPanelSize === '50'
+                        ? 'bg-[#15191e] text-purple-400 border border-slate-700/50'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >50%</button>
+                </div>
+              )}
               <span className="text-xs text-slate-500 font-semibold bg-slate-950 px-2 py-1 rounded border border-slate-800/80">
                 Showing {isDreamingOpen && readViewMode === 'split' ? upcomingEntries.length : filteredEntries.length} entries
               </span>
@@ -1026,7 +1051,11 @@ export const App: React.FC = () => {
           {/* Split view: timeline + detail panel side by side */}
           <div className="flex gap-4 min-h-0 flex-1 items-stretch">
             {/* Timeline (shrinks when split panel is open) */}
-            <div className={`transition-all duration-300 min-w-0 h-full overflow-y-auto pr-1 scrollbar-thin ${readViewMode === 'split' && selectedEntry ? 'w-1/2 flex-1' : 'flex-1'}`}>
+            <div className={`transition-all duration-300 min-w-0 h-full overflow-y-auto pr-1 scrollbar-thin ${
+              readViewMode === 'split' && selectedEntry
+                ? splitPanelSize === '25' ? 'w-3/4 flex-none' : 'w-1/2 flex-1'
+                : 'flex-1'
+            }`}>
               {isDreamingOpen && readViewMode === 'split' && upcomingEntries.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-emerald-900/30 rounded-xl bg-emerald-950/5 backdrop-blur-sm h-64 select-none">
                   <span className="text-3xl mb-3">🔮</span>
@@ -1065,7 +1094,9 @@ export const App: React.FC = () => {
             {/* Split view detail panel */}
             {readViewMode === 'split' && selectedEntry && (
               isEditingInline ? (
-                <div className="w-1/2 flex-1 min-w-0 h-full flex flex-col min-h-0 animate-fadeIn">
+                <div className={`min-w-0 h-full flex flex-col min-h-0 animate-fadeIn transition-all duration-300 ${
+                  splitPanelSize === '25' ? 'w-1/4 flex-none' : 'w-1/2 flex-1'
+                }`}>
                   <AddInstanceModal
                     isOpen={true}
                     onClose={() => {
@@ -1094,7 +1125,7 @@ export const App: React.FC = () => {
                 const depIds = selectedEntry.dependencies || [];
                 const validDeps = depIds.map(id => entries.find(e => e.id === id)).filter((e): e is PortfolioEntry => !!e);
                 return (
-                  <div className="w-1/2 flex-1 min-w-0 h-full flex flex-col min-h-0">
+                  <div className={`min-w-0 h-full flex flex-col min-h-0 transition-all duration-300 ${splitPanelSize === '25' ? 'w-1/4 flex-none' : 'w-1/2 flex-1'}`}>
                     <div className="bg-[#12161b] border border-slate-800 rounded-xl flex flex-col shadow-2xl overflow-hidden h-full">
                       {/* Split Panel Header */}
                       <div className="p-4 border-b border-slate-800 bg-[#15191e] flex items-start justify-between gap-3 shrink-0">
