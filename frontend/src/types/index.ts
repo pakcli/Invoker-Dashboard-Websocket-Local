@@ -1,12 +1,15 @@
 export interface PortfolioEntry {
   id: string;
-  source: 'proj' | 'cert' | 'item' | 'achv';
+  source: 'proj' | 'cert' | 'item' | 'achv' | 'edu' | 'exp';
   title: string;
   datestart: string;
   dateend?: string;
   skill?: string;
   github?: string;
   linkedin?: string;
+  organization?: string;
+  place?: string;
+  workType?: string;
   folderPath: string;
   imgPath?: string;
   attachments?: string[];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Github, Folder, FileText } from 'lucide-react';
+import { Briefcase, Folder, FileText } from 'lucide-react';
 import { PortfolioEntry } from '../types';
 import PdfThumbnail from './PdfThumbnail';
 import CardTitle from './CardTitle';
@@ -11,7 +11,6 @@ interface CardProps {
   thinnerCard?: boolean;
   isChecked?: boolean;
   onToggleChecked?: (id: string) => void;
-  hasUnfinishedProjectDeps?: boolean;
   showOrbs?: boolean;
 }
 
@@ -60,46 +59,44 @@ const getOrbColors = (skillStr: string | undefined) => {
   ];
 };
 
-export const ProjectCard: React.FC<CardProps> = ({ 
+export const ExpCard: React.FC<CardProps> = ({ 
   entry, 
   onOpenFolder, 
   onMore, 
   thinnerCard, 
   isChecked = false, 
   onToggleChecked,
-  hasUnfinishedProjectDeps = false,
   showOrbs = true
 }) => {
   const [color1, color2, color3] = getOrbColors(entry.skill);
 
-  const isGreen = !isChecked && !hasUnfinishedProjectDeps;
-  const borderClasses = isGreen
-    ? 'border-emerald-500/80'
-    : 'border-slate-800/80';
-
-
   return (
     <div 
       onClick={() => onMore(entry)}
-      className={`bg-[#12161b]/95 border-[3px] rounded-lg hover:border-slate-200/60 transition-all duration-300 shadow-md group max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${borderClasses} ${
+      className={`bg-[#12161b]/95 border border-slate-800 rounded-xl hover:border-sky-500/60 transition-all duration-300 shadow-md group relative overflow-hidden max-w-[512px] w-full flex flex-col justify-between mx-auto md:mx-0 cursor-pointer ${
         thinnerCard ? 'min-h-[105px] py-3.5 px-4' : 'h-[384px] p-5'
       }`}
     >
-      <div className="flex-1 flex flex-col min-h-0">
+      {/* Decorative background element */}
+      <div className="absolute -right-6 -bottom-6 opacity-5 dark:opacity-[0.03] text-sky-500">
+        <Briefcase size={120} />
+      </div>
+
+      <div className="flex-1 flex flex-col min-h-0 relative z-10">
         <div className={`flex gap-3 items-center shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
-          {/* Category Label Badge (far left) */}
-          <span className="text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 dark:text-emerald-450 border border-emerald-500/20 whitespace-nowrap shrink-0">
-            PROJECT
+          {/* Category Label Badge */}
+          <span className="text-[10px] tracking-wider font-extrabold px-2.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 whitespace-nowrap shrink-0">
+            EXPERIENCE
           </span>
           
-          {/* Center Details Block (title only, bigger) */}
+          {/* Title */}
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-black dark:text-slate-100 text-slate-800 transition-colors flex items-center min-w-0 w-full">
               <CardTitle title={entry.title} />
             </h3>
           </div>
 
-          {/* 3-Circle Orb Combo Icon (far right) */}
+          {/* Orbs */}
           {showOrbs && entry.skill && entry.skill.trim().length === 3 ? (
             <div className="w-8 h-7 relative shrink-0">
               <div className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color1, boxShadow: `0 0 8px ${color1}` }} />
@@ -111,7 +108,20 @@ export const ProjectCard: React.FC<CardProps> = ({
           )}
         </div>
 
-        {/* Date block: moved above thumbnail, aligned left */}
+        {/* Company & Location & Work Type details */}
+        {entry.organization && (
+          <div className="text-xs font-bold text-sky-400/90 -mt-1 mb-1 truncate flex items-center gap-1.5 flex-wrap">
+            <span>{entry.organization}</span>
+            {entry.place && <span className="text-slate-500">• {entry.place}</span>}
+            {entry.workType && (
+              <span className="text-[9px] bg-sky-500/10 text-sky-300 font-extrabold px-1.5 py-0.5 rounded border border-sky-500/20 uppercase tracking-wide">
+                {entry.workType}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Date block */}
         <div className={`text-[10px] font-semibold dark:text-slate-400 text-slate-500 ${thinnerCard ? 'mb-1' : 'mb-2.5'}`}>
           {entry.datestart} {entry.dateend ? `→ ${entry.dateend}` : '→ Present'}
         </div>
@@ -140,7 +150,7 @@ export const ProjectCard: React.FC<CardProps> = ({
         )}
       </div>
 
-      <div className={`flex items-center justify-between text-xs shrink-0 border-t dark:border-slate-800/50 border-slate-100 ${
+      <div className={`flex items-center justify-between text-xs relative z-10 border-t dark:border-slate-800/50 border-slate-100 shrink-0 ${
         thinnerCard ? 'pt-1.5' : 'pt-2'
       }`}>
         <div className="flex flex-wrap gap-2">
@@ -162,25 +172,9 @@ export const ProjectCard: React.FC<CardProps> = ({
             <Folder size={12} />
             <span>Folder</span>
           </button>
-          {entry.github && (
-            <a 
-              href={entry.github} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              onClick={(e) => e.stopPropagation()}
-              className={`flex items-center gap-1 dark:bg-slate-800 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 dark:text-slate-200 text-slate-700 rounded transition-colors ${
-                thinnerCard ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-xs'
-              }`}
-            >
-              <Github size={12} />
-              <span>GitHub</span>
-            </a>
-          )}
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
-
-
           {onToggleChecked && (
             <label 
               onClick={(e) => e.stopPropagation()} 
@@ -204,4 +198,4 @@ export const ProjectCard: React.FC<CardProps> = ({
   );
 };
 
-export default ProjectCard;
+export default ExpCard;

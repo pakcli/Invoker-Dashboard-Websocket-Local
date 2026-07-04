@@ -5,8 +5,8 @@ import { OrbType, DashboardStats, PortfolioEntry } from '../types';
 interface HUDProps {
   mode: 'all' | 'proj' | 'items';
   setMode: (mode: 'all' | 'proj' | 'items') => void;
-  subFilters: { cert: boolean; achv: boolean; item: boolean };
-  setSubFilters: React.Dispatch<React.SetStateAction<{ cert: boolean; achv: boolean; item: boolean }>>;
+  subFilters: { cert: boolean; achv: boolean; item: boolean; edu: boolean; exp: boolean };
+  setSubFilters: React.Dispatch<React.SetStateAction<{ cert: boolean; achv: boolean; item: boolean; edu: boolean; exp: boolean }>>;
   orbs: OrbType[];
   onClear: () => void;
   onInvoke: () => void;
@@ -124,7 +124,7 @@ export const InvokerHUD: React.FC<HUDProps> = ({
     }
   };
 
-  const handleSubFilterToggle = (key: 'cert' | 'achv' | 'item') => {
+  const handleSubFilterToggle = (key: 'cert' | 'achv' | 'item' | 'edu' | 'exp') => {
     setSubFilters(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -212,8 +212,14 @@ export const InvokerHUD: React.FC<HUDProps> = ({
             Active Item Filters
           </label>
           <div className="flex flex-col gap-2 p-3 bg-slate-950/40 border border-slate-800 rounded-lg">
-            {(['cert', 'achv', 'item'] as const).map((key) => {
-              const labelMap = { cert: 'Certifications', achv: 'Achievements', item: 'Hardware Items' };
+            {(['cert', 'achv', 'item', 'edu', 'exp'] as const).map((key) => {
+              const labelMap = { 
+                cert: 'Certifications', 
+                achv: 'Achievements', 
+                item: 'Hardware Items',
+                edu: 'Education',
+                exp: 'Experience'
+              };
               return (
                 <label key={key} className="flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-400 hover:text-slate-200">
                   <input

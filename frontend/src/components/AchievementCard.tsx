@@ -91,8 +91,18 @@ export const AchievementCard: React.FC<CardProps> = ({
       <div className="flex-1 flex flex-col min-h-0 relative z-10">
         <div className={`flex gap-3 items-center shrink-0 ${thinnerCard ? 'mb-1.5' : 'mb-3'}`}>
           {/* Category Label Badge (far left) */}
-          <span className={`text-[10px] tracking-wider font-extrabold px-2 py-0.5 rounded border whitespace-nowrap shrink-0 uppercase ${badgeClasses}`}>
-            {isChecked && !hasUnfinishedProjectDeps ? 'IMMORTAL' : 'ACHIEVEMENT'}
+          <span className={`text-[10px] tracking-wider font-extrabold px-2 py-0.5 rounded border whitespace-nowrap shrink-0 uppercase flex items-center gap-1 ${badgeClasses}`}>
+            {isChecked && !hasUnfinishedProjectDeps ? (
+              <>
+                <span>🏆</span>
+                <span>ACHIEVEMENT</span>
+              </>
+            ) : (
+              <>
+                <span className="animate-[spin_4s_linear_infinite] inline-block origin-center">⏳</span>
+                <span>ACHIEVEMENT</span>
+              </>
+            )}
           </span>
           
           {/* Center Details Block (title only, bigger) */}

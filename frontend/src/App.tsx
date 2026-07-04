@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy, Award, Trophy, Package } from 'lucide-react';
+import { X, Github, Folder, Info, Linkedin, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Copy, Award, Trophy, Package, GraduationCap, Briefcase } from 'lucide-react';
 import { PortfolioEntry, OrbType, DashboardStats } from './types';
 import SearchBar from './components/SearchBar';
 import InvokerHUD from './components/InvokerHUD';
@@ -10,6 +10,8 @@ import ProjectCard from './components/ProjectCard';
 import CertCard from './components/CertCard';
 import ItemCard from './components/ItemCard';
 import AchievementCard from './components/AchievementCard';
+import EduCard from './components/EduCard';
+import ExpCard from './components/ExpCard';
 import sfx from './lib/sfx';
 
 
@@ -146,9 +148,13 @@ const formatDate = (dateStr: string) => {
 
 const getRelativeDateString = (dateStr: string) => {
   if (!dateStr) return '';
+  if (dateStr.toLowerCase() === 'present') return 'Present';
   const today = new Date();
   today.setHours(0,0,0,0);
   const targetDate = new Date(dateStr);
+  if (isNaN(targetDate.getTime())) {
+    return dateStr;
+  }
   targetDate.setHours(0,0,0,0);
 
   const diffTime = targetDate.getTime() - today.getTime();
@@ -214,6 +220,10 @@ const FlippableCard: React.FC<{
         return <Trophy size={size} className="text-emerald-400" />;
       case 'item':
         return <Package size={size} className="text-emerald-400" />;
+      case 'edu':
+        return <GraduationCap size={size} className="text-emerald-400" />;
+      case 'exp':
+        return <Briefcase size={size} className="text-emerald-400" />;
       default:
         return <Folder size={size} className="text-emerald-400" />;
     }
@@ -268,12 +278,12 @@ export const App: React.FC = () => {
   const [mode, setMode] = useState<'all' | 'proj' | 'items'>(() => {
     return (localStorage.getItem('mode') as 'all' | 'proj' | 'items') || 'all';
   });
-  const [subFilters, setSubFilters] = useState<{ cert: boolean; achv: boolean; item: boolean }>(() => {
+  const [subFilters, setSubFilters] = useState<{ cert: boolean; achv: boolean; item: boolean; edu: boolean; exp: boolean }>(() => {
     try {
       const saved = localStorage.getItem('subFilters');
-      return saved ? JSON.parse(saved) : { cert: true, achv: true, item: true };
+      return saved ? JSON.parse(saved) : { cert: true, achv: true, item: true, edu: true, exp: true };
     } catch (e) {
-      return { cert: true, achv: true, item: true };
+      return { cert: true, achv: true, item: true, edu: true, exp: true };
     }
   });
   const [orbs, setOrbs] = useState<OrbType[]>(() => {
@@ -367,6 +377,34 @@ export const App: React.FC = () => {
     return localStorage.getItem('clickToEdit') === 'true';
   });
   const [isEditingInline, setIsEditingInline] = useState<boolean>(false);
+  const prevGoldAchvsRef = useRef<string[]>([]);
+  const isFirstGoldRenderRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    const currentGoldIds = entries
+      .filter(e => e.source === 'achv')
+      .filter(e => {
+        const isChecked = checkedCards[e.id] !== undefined ? checkedCards[e.id] : (e.done || false);
+        const hasUnfinished = hasUnfinishedProjectDeps(e, entries, checkedCards);
+        return isChecked && !hasUnfinished;
+      })
+      .map(e => e.id);
+
+    if (isFirstGoldRenderRef.current) {
+      if (entries.length > 0) {
+        prevGoldAchvsRef.current = currentGoldIds;
+        isFirstGoldRenderRef.current = false;
+      }
+      return;
+    }
+
+    const newGoldAchv = currentGoldIds.some(id => !prevGoldAchvsRef.current.includes(id));
+    if (newGoldAchv) {
+      if (soundEnabled) sfx.playTreasure();
+    }
+
+    prevGoldAchvsRef.current = currentGoldIds;
+  }, [entries, checkedCards, soundEnabled]);
 
 
   // Temporary view settings for Tegak Lurus panel modal (they follow/default to the sidebar HUD settings when opened)
@@ -799,7 +837,9 @@ export const App: React.FC = () => {
         const matchesSub =
           (entry.source === 'cert' && subFilters.cert) ||
           (entry.source === 'achv' && subFilters.achv) ||
-          (entry.source === 'item' && subFilters.item);
+          (entry.source === 'item' && subFilters.item) ||
+          (entry.source === 'edu' && subFilters.edu) ||
+          (entry.source === 'exp' && subFilters.exp);
         if (!matchesSub) return false;
       }
 
@@ -843,7 +883,9 @@ export const App: React.FC = () => {
         const matchesSub =
           (entry.source === 'cert' && subFilters.cert) ||
           (entry.source === 'achv' && subFilters.achv) ||
-          (entry.source === 'item' && subFilters.item);
+          (entry.source === 'item' && subFilters.item) ||
+          (entry.source === 'edu' && subFilters.edu) ||
+          (entry.source === 'exp' && subFilters.exp);
         if (!matchesSub) return false;
       }
 
@@ -910,32 +952,35 @@ export const App: React.FC = () => {
 
     entriesForStats.forEach(item => {
       const isChecked = checkedCards[item.id] !== undefined ? checkedCards[item.id] : (item.done || false);
+      const today = new Date().toISOString().slice(0, 10);
+      const isPast = !isChecked && !!item.dateend && item.dateend < today;
+
       if (isChecked) {
         totalDone++;
       } else {
-        totalUpcoming++;
+        if (!isPast) totalUpcoming++;
       }
 
       if (item.source === 'achv') {
         if (isChecked) goldDone++;
-        else goldUpcoming++;
+        else if (!isPast) goldUpcoming++;
       }
       if (!item.skill) {
         if (isChecked) greyDone++;
-        else greyUpcoming++;
+        else if (!isPast) greyUpcoming++;
       } else {
         const s = item.skill.toLowerCase();
         if (s.includes('q')) {
           if (isChecked) quasDone++;
-          else quasUpcoming++;
+          else if (!isPast) quasUpcoming++;
         }
         if (s.includes('w')) {
           if (isChecked) wexDone++;
-          else wexUpcoming++;
+          else if (!isPast) wexUpcoming++;
         }
         if (s.includes('e')) {
           if (isChecked) exortDone++;
-          else exortUpcoming++;
+          else if (!isPast) exortUpcoming++;
         }
       }
     });
@@ -1289,7 +1334,7 @@ export const App: React.FC = () => {
         {/* Stats mini-display to the left of the button */}
         {!isDreamingOpen && isHoveringFindMatch && (() => {
           const today = new Date().toISOString().slice(0, 10);
-          const upcoming = entries.filter(e => e.datestart && e.datestart >= today && !checkedCards[e.id] && !e.done);
+          const upcoming = entries.filter(e => e.datestart && !(e.dateend && e.dateend < today) && !checkedCards[e.id] && !e.done);
           const projCount = upcoming.filter(e => e.source === 'proj').length;
           const itemCount = upcoming.filter(e => e.source !== 'proj').length;
           return (
@@ -1609,15 +1654,48 @@ export const App: React.FC = () => {
                         getDetailPanelHeaderClasses(selectedEntry, checkedCards)
                       }`}>
                         <div className="min-w-0">
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 ${
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 flex items-center gap-1 inline-flex ${
                             getDetailPanelBadgeClasses(selectedEntry, checkedCards)
                           }`}>
-                            {isDoneAchievement ? 'IMMORTAL' : selectedEntry.source}
+                            {selectedEntry.source === 'achv' ? (
+                              isDoneAchievement && !hasUnfinishedProjectDeps(selectedEntry, entries, checkedCards) ? (
+                                <>
+                                  <span>🏆</span>
+                                  <span>ACHIEVEMENT</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="animate-[spin_4s_linear_infinite] inline-block origin-center">⏳</span>
+                                  <span>ACHIEVEMENT</span>
+                                </>
+                              )
+                            ) : (
+                              selectedEntry.source
+                            )}
                           </span>
                           <span className="text-xs text-slate-400 font-semibold">
                             {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
                           </span>
                           <h2 className={`text-base font-black mt-1 truncate ${isDoneAchievement ? 'dota-immortal-text font-serif font-black' : 'text-slate-100'}`}>{selectedEntry.title}</h2>
+                          {(selectedEntry.organization || selectedEntry.place || selectedEntry.workType) && (
+                            <div className="flex flex-wrap gap-2 items-center text-xs text-slate-400 mt-1 font-semibold">
+                              {selectedEntry.organization && (
+                                <span className={selectedEntry.source === 'edu' ? 'text-teal-400' : 'text-sky-400'}>
+                                  {selectedEntry.organization}
+                                </span>
+                              )}
+                              {selectedEntry.place && (
+                                <span className="text-slate-500">• {selectedEntry.place}</span>
+                              )}
+                              {selectedEntry.workType && (
+                                <span className={`text-[10px] uppercase font-black px-1.5 py-0.5 rounded ${
+                                  selectedEntry.source === 'edu' ? 'bg-teal-500/10 text-teal-300' : 'bg-sky-500/10 text-sky-300'
+                                }`}>
+                                  {selectedEntry.workType}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={handleCloseModal}
@@ -1776,10 +1854,24 @@ export const App: React.FC = () => {
                 getDetailPanelHeaderClasses(selectedEntry, checkedCards)
               }`}>
                 <div>
-                  <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 ${
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider mr-2 flex items-center gap-1 inline-flex ${
                     getDetailPanelBadgeClasses(selectedEntry, checkedCards)
                   }`}>
-                    {isDoneAchievement ? 'IMMORTAL' : selectedEntry.source}
+                    {selectedEntry.source === 'achv' ? (
+                      isDoneAchievement && !hasUnfinishedProjectDeps(selectedEntry, entries, checkedCards) ? (
+                        <>
+                          <span>🏆</span>
+                          <span>ACHIEVEMENT</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="animate-[spin_4s_linear_infinite] inline-block origin-center">⏳</span>
+                          <span>ACHIEVEMENT</span>
+                        </>
+                      )
+                    ) : (
+                      selectedEntry.source
+                    )}
                   </span>
                   <span className="text-xs text-slate-400 font-semibold">
                     {selectedEntry.datestart} {selectedEntry.dateend ? `→ ${selectedEntry.dateend}` : '→ Present'}
@@ -1787,6 +1879,25 @@ export const App: React.FC = () => {
                   <h2 className={`text-lg font-black mt-1 ${isDoneAchievement ? 'dota-immortal-text font-serif font-black' : 'text-slate-100'}`}>
                     {selectedEntry.title}
                   </h2>
+                  {(selectedEntry.organization || selectedEntry.place || selectedEntry.workType) && (
+                    <div className="flex flex-wrap gap-2 items-center text-xs text-slate-400 mt-1 font-semibold">
+                      {selectedEntry.organization && (
+                        <span className={selectedEntry.source === 'edu' ? 'text-teal-400' : 'text-sky-400'}>
+                          {selectedEntry.organization}
+                        </span>
+                      )}
+                      {selectedEntry.place && (
+                        <span className="text-slate-500">• {selectedEntry.place}</span>
+                      )}
+                      {selectedEntry.workType && (
+                        <span className={`text-[10px] uppercase font-black px-1.5 py-0.5 rounded ${
+                          selectedEntry.source === 'edu' ? 'bg-teal-500/10 text-teal-300' : 'bg-sky-500/10 text-sky-300'
+                        }`}>
+                          {selectedEntry.workType}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={handleCloseModal}
@@ -2139,6 +2250,10 @@ export const App: React.FC = () => {
                                     return <ItemCard {...cardProps} />;
                                   case 'achv':
                                     return <AchievementCard {...cardProps} />;
+                                  case 'edu':
+                                    return <EduCard {...cardProps} />;
+                                  case 'exp':
+                                    return <ExpCard {...cardProps} />;
                                   default:
                                     return null;
                                 }

@@ -4,6 +4,8 @@ import ProjectCard from './ProjectCard';
 import CertCard from './CertCard';
 import ItemCard from './ItemCard';
 import AchievementCard from './AchievementCard';
+import EduCard from './EduCard';
+import ExpCard from './ExpCard';
 import { Flame } from 'lucide-react';
 
 interface TimelineProps {
@@ -368,6 +370,8 @@ export const Timeline: React.FC<TimelineProps> = ({
       case 'cert': cardElement = <CertCard {...cardProps} />; break;
       case 'item': cardElement = <ItemCard {...cardProps} />; break;
       case 'achv': cardElement = <AchievementCard {...cardProps} />; break;
+      case 'edu': cardElement = <EduCard {...cardProps} />; break;
+      case 'exp': cardElement = <ExpCard {...cardProps} />; break;
     }
 
     if (!cardElement) return null;

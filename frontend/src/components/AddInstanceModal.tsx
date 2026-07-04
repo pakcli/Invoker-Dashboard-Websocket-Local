@@ -1,8 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import { X, Folder, Award, Cpu, Trophy, Upload, FileText, ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Copy, GraduationCap, Briefcase } from 'lucide-react';
 import { PortfolioEntry } from '../types';
 import PdfThumbnail from './PdfThumbnail';
 import sfx from '../lib/sfx';
+
+const adjustDateByDays = (dateStr: string, days: number) => {
+  const current = dateStr ? new Date(dateStr) : new Date();
+  if (isNaN(current.getTime())) return dateStr;
+  current.setDate(current.getDate() + days);
+  const y = current.getFullYear();
+  const m = String(current.getMonth() + 1).padStart(2, '0');
+  const d = String(current.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 
 interface AddInstanceModalProps {
   isOpen: boolean;
@@ -40,7 +50,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
   onSaveSuccess
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
-  const [category, setCategory] = useState<'proj' | 'cert' | 'item' | 'achv'>('proj');
+  const [category, setCategory] = useState<'proj' | 'cert' | 'item' | 'achv' | 'edu' | 'exp'>('proj');
 
   // Form states
   const [folderName, setFolderName] = useState('');
@@ -50,6 +60,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
   const [skill, setSkill] = useState('');
   const [github, setGithub] = useState('');
   const [linkedin, setLinkedin] = useState('');
+  const [organization, setOrganization] = useState('');
+  const [place, setPlace] = useState('');
+  const [workType, setWorkType] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [isFolderNameCustom, setIsFolderNameCustom] = useState(false);
   const [done, setDone] = useState(false);
@@ -81,6 +94,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     setSkill('');
     setGithub('');
     setLinkedin('');
+    setOrganization('');
+    setPlace('');
+    setWorkType('');
     setBodyText('');
     setDone(false);
     setSelectedFiles([]);
@@ -218,6 +234,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
       setSkill(editEntry.skill || '');
       setGithub(editEntry.github || '');
       setLinkedin(editEntry.linkedin || '');
+      setOrganization(editEntry.organization || '');
+      setPlace(editEntry.place || '');
+      setWorkType(editEntry.workType || '');
       setBodyText(editEntry.body || '');
       
       const currentChecked = checkedCards && checkedCards[editEntry.id] !== undefined
@@ -299,7 +318,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     setPreviewBlobUrl(null);
   }, [thumbnailFilename, selectedFiles, existingFiles, editEntry, pendingRename]);
 
-  const handleSelectCategory = (cat: 'proj' | 'cert' | 'item' | 'achv') => {
+  const handleSelectCategory = (cat: 'proj' | 'cert' | 'item' | 'achv' | 'edu' | 'exp') => {
     setCategory(cat);
     setStep(2);
   };
@@ -332,6 +351,9 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     if (metadata.skill) setSkill(metadata.skill);
     if (metadata.github) setGithub(metadata.github);
     if (metadata.linkedin) setLinkedin(metadata.linkedin);
+    if (metadata.organization) setOrganization(metadata.organization);
+    if (metadata.place) setPlace(metadata.place);
+    if (metadata.worktype) setWorkType(metadata.worktype);
     if (metadata.done) setDone(metadata.done.toLowerCase() === 'true');
     if (metadata.dependencies) {
       const depStr = metadata.dependencies.replace(/[\[\]'"]/g, '');
@@ -452,6 +474,15 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
     }
     if (linkedin.trim()) {
       frontmatter += `linkedin: ${linkedin.trim()}\n`;
+    }
+    if (organization.trim()) {
+      frontmatter += `organization: ${organization.trim()}\n`;
+    }
+    if (place.trim()) {
+      frontmatter += `place: ${place.trim()}\n`;
+    }
+    if (workType.trim()) {
+      frontmatter += `workType: ${workType.trim()}\n`;
     }
     frontmatter += `---\n\n${bodyText.trim()}`;
 
@@ -670,6 +701,42 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                     </span>
                   </div>
                 </div>
+
+                {/* Education */}
+                <div
+                  onClick={() => handleSelectCategory('edu')}
+                  className={`border border-slate-800/80 bg-[#15191e] hover:border-teal-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(20,184,166,0.15)] flex cursor-pointer transition-all group rounded-lg ${
+                    isInline ? 'flex-row items-center justify-start text-left p-3.5 gap-4' : 'flex-col items-center justify-center text-center p-5'
+                  }`}
+                >
+                  <GraduationCap className="text-teal-500 shrink-0" size={isInline ? 24 : 32} />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-teal-400 transition-colors">
+                      Education
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 font-medium leading-tight">
+                      Schools, colleges, or degrees
+                    </span>
+                  </div>
+                </div>
+
+                {/* Experience */}
+                <div
+                  onClick={() => handleSelectCategory('exp')}
+                  className={`border border-slate-800/80 bg-[#15191e] hover:border-sky-500/50 hover:bg-[#1a1f26] shadow-sm hover:shadow-[0_0_15px_rgba(14,165,233,0.15)] flex cursor-pointer transition-all group rounded-lg ${
+                    isInline ? 'flex-row items-center justify-start text-left p-3.5 gap-4' : 'flex-col items-center justify-center text-center p-5'
+                  }`}
+                >
+                  <Briefcase className="text-sky-500 shrink-0" size={isInline ? 24 : 32} />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-slate-200 uppercase tracking-wider group-hover:text-sky-400 transition-colors">
+                      Experience
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 font-medium leading-tight">
+                      Jobs, internships, or work history
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -700,7 +767,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                 )}
                 <div>
                   <h2 className="text-sm font-black text-slate-100 uppercase tracking-widest font-dota flex items-center gap-1.5">
-                    <span>{isEditMode ? 'Edit' : 'Create'} {category === 'proj' ? 'Project' : category === 'cert' ? 'Certification' : category === 'item' ? 'Item' : 'Achievement'}</span>
+                    <span>{isEditMode ? 'Edit' : 'Create'} {category === 'proj' ? 'Project' : category === 'cert' ? 'Certification' : category === 'item' ? 'Item' : category === 'achv' ? 'Achievement' : category === 'edu' ? 'Education' : 'Experience'}</span>
                   </h2>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Target Dir:</span>
@@ -708,13 +775,15 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                       <span>data/</span>
                       <select
                         value={category}
-                        onChange={(e) => setCategory(e.target.value as 'proj' | 'cert' | 'item' | 'achv')}
+                        onChange={(e) => setCategory(e.target.value as 'proj' | 'cert' | 'item' | 'achv' | 'edu' | 'exp')}
                         className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-[9px] text-cyan-400 focus:outline-none focus:border-cyan-500/50 font-mono font-bold cursor-pointer"
                       >
                         <option value="proj">proj</option>
                         <option value="cert">cert</option>
                         <option value="item">item</option>
                         <option value="achv">achv</option>
+                        <option value="edu">edu</option>
+                        <option value="exp">exp</option>
                       </select>
                       <span>/</span>
                       <input
@@ -900,7 +969,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                                       className={`text-[10px] uppercase font-bold transition-colors ${
                                         parsed.title
                                           ? 'text-emerald-500 hover:text-emerald-450 cursor-pointer hover:underline'
-                                          : 'text-slate-650 cursor-not-allowed'
+                                          : 'text-slate-600 cursor-not-allowed'
                                       }`}
                                       title={parsed.title ? `Set Title to: "${parsed.title}"` : 'No title data in filename'}
                                     >
@@ -917,7 +986,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                                       className={`text-[10px] uppercase font-bold transition-colors ${
                                         parsed.dateStart
                                           ? 'text-cyan-450 hover:text-cyan-350 cursor-pointer hover:underline'
-                                          : 'text-slate-650 cursor-not-allowed'
+                                          : 'text-slate-600 cursor-not-allowed'
                                       }`}
                                       title={parsed.dateStart ? `Set Date Start to: ${parsed.dateStart}` : 'No start date data in filename'}
                                     >
@@ -934,7 +1003,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                                       className={`text-[10px] uppercase font-bold transition-colors ${
                                         parsed.dateEnd
                                           ? 'text-fuchsia-450 hover:text-fuchsia-350 cursor-pointer hover:underline'
-                                          : 'text-slate-650 cursor-not-allowed'
+                                          : 'text-slate-600 cursor-not-allowed'
                                       }`}
                                       title={parsed.dateEnd ? `Set Date End to: ${parsed.dateEnd}` : 'No end date data in filename'}
                                     >
@@ -1003,7 +1072,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                                       className={`text-[10px] uppercase font-bold transition-colors ${
                                         parsed.title
                                           ? 'text-emerald-500 hover:text-emerald-450 cursor-pointer hover:underline'
-                                          : 'text-slate-650 cursor-not-allowed'
+                                          : 'text-slate-600 cursor-not-allowed'
                                       }`}
                                       title={parsed.title ? `Set Title to: "${parsed.title}"` : 'No title data in filename'}
                                     >
@@ -1020,7 +1089,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                                       className={`text-[10px] uppercase font-bold transition-colors ${
                                         parsed.dateStart
                                           ? 'text-cyan-450 hover:text-cyan-350 cursor-pointer hover:underline'
-                                          : 'text-slate-650 cursor-not-allowed'
+                                          : 'text-slate-600 cursor-not-allowed'
                                       }`}
                                       title={parsed.dateStart ? `Set Date Start to: ${parsed.dateStart}` : 'No start date data in filename'}
                                     >
@@ -1037,7 +1106,7 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                                       className={`text-[10px] uppercase font-bold transition-colors ${
                                         parsed.dateEnd
                                           ? 'text-fuchsia-450 hover:text-fuchsia-350 cursor-pointer hover:underline'
-                                          : 'text-slate-650 cursor-not-allowed'
+                                          : 'text-slate-600 cursor-not-allowed'
                                       }`}
                                       title={parsed.dateEnd ? `Set Date End to: ${parsed.dateEnd}` : 'No end date data in filename'}
                                     >
@@ -1131,26 +1200,127 @@ export const AddInstanceModal: React.FC<AddInstanceModalProps> = ({
                   />
                 </div>
 
+                {/* Organization & Place & WorkType (Only for Edu and Exp) */}
+                {(category === 'edu' || category === 'exp') && (
+                  <>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wider text-slate-500">
+                        {category === 'edu' ? 'Institution / School *' : 'Organization / Company *'}
+                      </label>
+                      <input
+                        type="text"
+                        value={organization}
+                        onChange={(e) => setOrganization(e.target.value)}
+                        placeholder={category === 'edu' ? 'e.g. University of Michigan' : 'e.g. Contoso Suites'}
+                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wider text-slate-500">Location / Place</label>
+                      <input
+                        type="text"
+                        value={place}
+                        onChange={(e) => setPlace(e.target.value)}
+                        placeholder="e.g. Detroit, MI"
+                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] uppercase tracking-wider text-slate-500">Work/Study Type</label>
+                      <select
+                        value={workType}
+                        onChange={(e) => setWorkType(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none"
+                      >
+                        <option value="">Select type...</option>
+                        <option value="on-site">On-site</option>
+                        <option value="hybrid">Hybrid</option>
+                        <option value="remote">Remote</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Date Start */}
                 {/* Date Start */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] uppercase tracking-wider text-slate-500">Date Start *</label>
-                  <input
-                    type="date"
-                    value={dateStart}
-                    onChange={(e) => setDateStart(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none font-mono"
-                  />
+                  <div className="flex items-center gap-1.5 w-full">
+                    <input
+                      type="text"
+                      value={dateStart}
+                      onChange={(e) => setDateStart(e.target.value)}
+                      placeholder="YYYY-MM-DD or e.g. Jan 2024"
+                      className="flex-1 min-w-0 px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none font-mono"
+                    />
+                    <div className="flex gap-1 shrink-0 select-none">
+                      <button
+                        type="button"
+                        onClick={() => { sfx.playTick(); setDateStart(prev => adjustDateByDays(prev, -7)); }}
+                        className="px-2 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-850 rounded text-[9px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                        title="-1 Week"
+                      >
+                        -1W
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { sfx.playTick(); setDateStart(editEntry?.datestart || ''); }}
+                        className="px-2 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-850 rounded text-[9px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { sfx.playTick(); setDateStart(prev => adjustDateByDays(prev, 7)); }}
+                        className="px-2 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-855 rounded text-[9px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                        title="+1 Week"
+                      >
+                        +1W
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Date End */}
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] uppercase tracking-wider text-slate-500">Date End</label>
-                  <input
-                    type="date"
-                    value={dateEnd}
-                    onChange={(e) => setDateEnd(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none font-mono"
-                  />
+                  <div className="flex items-center gap-1.5 w-full">
+                    <input
+                      type="text"
+                      value={dateEnd}
+                      onChange={(e) => setDateEnd(e.target.value)}
+                      placeholder="YYYY-MM-DD or e.g. Present"
+                      className="flex-1 min-w-0 px-3 py-1.5 bg-slate-900 border border-slate-800 focus:border-slate-700 text-slate-200 rounded-lg focus:outline-none font-mono"
+                    />
+                    <div className="flex gap-1 shrink-0 select-none">
+                      <button
+                        type="button"
+                        onClick={() => { sfx.playTick(); setDateEnd(prev => adjustDateByDays(prev, -7)); }}
+                        className="px-2 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-850 rounded text-[9px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                        title="-1 Week"
+                      >
+                        -1W
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { sfx.playTick(); setDateEnd(editEntry?.dateend || ''); }}
+                        className="px-2 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-855 rounded text-[9px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { sfx.playTick(); setDateEnd(prev => adjustDateByDays(prev, 7)); }}
+                        className="px-2 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-850 rounded text-[9px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                        title="+1 Week"
+                      >
+                        +1W
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Skill Orbs */}
