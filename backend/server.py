@@ -207,7 +207,7 @@ def update_parent_dependency(child_id, parent_id, add=True):
 
 def cleanup_deleted_dependency(deleted_id):
     import frontmatter
-    categories = ["proj", "cert", "item", "achv"]
+    categories = ["proj", "cert", "item", "achv", "edu", "exp"]
     for cat in categories:
         cat_dir = os.path.join(WATCH_DIR, cat)
         if not os.path.isdir(cat_dir):
@@ -256,7 +256,7 @@ def create_entry():
     category = re.sub(r'[^a-zA-Z0-9_\-]', '', category)
     folder_name = re.sub(r'[^a-zA-Z0-9_\-]', '', folder_name)
 
-    if category not in ["proj", "cert", "item", "achv"]:
+    if category not in ["proj", "cert", "item", "achv", "edu", "exp"]:
         return jsonify({"error": "Invalid category"}), 400
 
     if not folder_name:
@@ -331,7 +331,7 @@ def create_entry():
             if target_parent:
                 update_parent_dependency(new_child_id, target_parent, add=True)
             # Also rename dependency references in any other cards
-            categories = ["proj", "cert", "item", "achv"]
+            categories = ["proj", "cert", "item", "achv", "edu", "exp"]
             for cat in categories:
                 cat_dir = os.path.join(WATCH_DIR, cat)
                 if not os.path.isdir(cat_dir):
@@ -469,7 +469,7 @@ def delete_entry():
     category_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', category)
     folder_sanitized = re.sub(r'[^a-zA-Z0-9_\-]', '', folder_name)
 
-    if category_sanitized not in ["proj", "cert", "item", "achv"]:
+    if category_sanitized not in ["proj", "cert", "item", "achv", "edu", "exp"]:
         return jsonify({"error": "Invalid category"}), 400
 
     target_dir = os.path.abspath(os.path.join(WATCH_DIR, category_sanitized, folder_sanitized))
@@ -510,7 +510,7 @@ def toggle_done():
         
     # Extract category and entry_name from card_id (e.g., category_entryname)
     category = None
-    for cat in ["proj", "cert", "item", "achv"]:
+    for cat in ["proj", "cert", "item", "achv", "edu", "exp"]:
         if card_id.startswith(cat + "_"):
             category = cat
             entry_name = card_id[len(cat) + 1:]
@@ -571,7 +571,7 @@ def duplicate_entry():
 
     # Extract category and entry_name from card_id (e.g., category_entryname)
     category = None
-    for cat in ["proj", "cert", "item", "achv"]:
+    for cat in ["proj", "cert", "item", "achv", "edu", "exp"]:
         if card_id.startswith(cat + "_"):
             category = cat
             entry_name = card_id[len(cat) + 1:]

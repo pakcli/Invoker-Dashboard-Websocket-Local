@@ -149,6 +149,7 @@ export const AchievementCard: React.FC<CardProps> = ({
                   src={entry.imgPath} 
                   alt={entry.title} 
                   className="w-full h-full object-cover animate-fadeIn"
+                  loading="lazy"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}

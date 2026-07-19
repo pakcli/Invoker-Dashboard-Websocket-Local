@@ -112,10 +112,15 @@ Open `.env` and set `PORTFOLIO_WATCH_DIR` to the folder containing your portfoli
 
 ### 3. Run the Application
 #### Windows
-Run the boot script:
+Run the boot script via Command Prompt (CMD):
 ```cmd
 start.bat
 ```
+Or via PowerShell:
+```powershell
+.\start.ps1
+```
+
 
 #### macOS / Linux
 Run the commands in your shell:

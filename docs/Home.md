@@ -23,6 +23,7 @@ Explore the technical details of the application through the following pages:
 1. **[System Architecture](System-Architecture.md)**: Details the backend Flask application, Vite React frontend, file synchronization pipeline, and secure directory-watching architecture.
 2. **[Data Structure & Directory Schema](Data-Structure.md)**: Explains the watched folder structure, categories, indexing patterns, and Markdown YAML frontmatter schemas.
 3. **[API Reference](API-Reference.md)**: Specifications for the HTTP REST endpoints, directory access endpoints, and WebSocket real-time event broadcaster.
+4. **[Two-Sided Connection Network](Connection-Network.md)**: Explains the interactive SVG relationship network that visualizes and navigates project dependencies.
 
 ---
 

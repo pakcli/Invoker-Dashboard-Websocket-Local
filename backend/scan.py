@@ -8,7 +8,7 @@ SKILL_PATTERN = re.compile(r"^[qwe]{3}$", re.IGNORECASE)
 
 def scan_directory(watch_dir):
     data = []
-    categories = ["proj", "cert", "item", "achv"]
+    categories = ["proj", "cert", "item", "achv", "edu", "exp"]
     
     if not os.path.exists(watch_dir):
         print(f"Warning: Watch directory {watch_dir} does not exist.")
@@ -75,6 +75,24 @@ def scan_directory(watch_dir):
                 else:
                     linkedin = ""
 
+                organization = post.get("organization", "")
+                if organization:
+                    organization = str(organization).strip()
+                else:
+                    organization = ""
+
+                place = post.get("place", "")
+                if place:
+                    place = str(place).strip()
+                else:
+                    place = ""
+
+                workType = post.get("workType", "")
+                if workType:
+                    workType = str(workType).strip()
+                else:
+                    workType = ""
+
                 done = post.get("done", False)
                 if isinstance(done, str):
                     done = done.lower() == "true"
@@ -120,6 +138,9 @@ def scan_directory(watch_dir):
                     "skill": skill,
                     "github": github,
                     "linkedin": linkedin,
+                    "organization": organization,
+                    "place": place,
+                    "workType": workType,
                     "folderPath": folder_path,
                     "imgPath": img_path,
                     "attachments": attachments,
@@ -133,11 +154,15 @@ def scan_directory(watch_dir):
                 continue
                 
     def get_sort_key(x):
-        try:
-            return datetime.strptime(x["datestart"], "%Y-%m-%d")
-        except:
+        date_str = x["datestart"]
+        if not date_str:
             return datetime.min
-            
+        for fmt in ("%Y-%m-%d", "%b %Y", "%B %Y", "%Y-%m", "%Y"):
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                pass
+        return datetime.min
     data.sort(key=get_sort_key, reverse=True)
     return data
 
